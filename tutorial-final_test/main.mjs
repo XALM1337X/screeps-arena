@@ -31,7 +31,7 @@ let TState = {
     GroupTierCriteria: {
         Tier0: {
             harvester_groups: {
-                total_groups: 2,
+                total_groups: 1,
                 total_creeps: 4,
                 harvester_creeps: 2,
                 transport_creeps: 2,
