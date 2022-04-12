@@ -1589,19 +1589,19 @@ export function loop() {
     //TODO: Trigger Inits based off error flags thrown.
     if (!TState.Preflight) {
         TState.Init();
-        console.log(TState.CreepGroups["harvester_groups"].length);
+        //console.log(TState.CreepGroups["harvester_groups"].length);
         for (let i = 0; i < TState.CreepGroups["harvester_groups"].length; i++) {
             console.log(TState.CreepGroups["harvester_groups"][i]);
         }
-        console.log(TState.CreepGroups["build_groups"].length);
+        //console.log(TState.CreepGroups["build_groups"].length);
         for (let i = 0; i < TState.CreepGroups["build_groups"].length; i++) {
             console.log(TState.CreepGroups["build_groups"][i]);
         }
-        console.log(TState.CreepGroups["defense_groups"].length);
+        //console.log(TState.CreepGroups["defense_groups"].length);
         for (let i = 0; i < TState.CreepGroups["defense_groups"].length; i++) {
             console.log(TState.CreepGroups["defense_groups"][i]);
         }
-        console.log(TState.CreepGroups["attack_groups"].length);
+        //console.log(TState.CreepGroups["attack_groups"].length);
         for (let i = 0; i < TState.CreepGroups["attack_groups"].length; i++) {
             console.log(TState.CreepGroups["attack_groups"][i]);
         }
