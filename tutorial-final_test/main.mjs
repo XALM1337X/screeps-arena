@@ -28,8 +28,40 @@ let TState = {
     GameType: ["ctf","cnc","sns"],
     CreepGroupKey: ["harvester_groups", "defense_groups", "attack_groups", "build_groups","capture_groups"],
     RoomSources: [],
-    GroupUpgradeCriteria: {
+    GroupTierCriteria: {
         Tier0: {
+            harvester_groups: {
+                total_groups: 2,
+                total_creeps: 4,
+                harvester_creeps: 2,
+                transport_creeps: 2,
+
+            },
+            build_groups: {
+                total_groups: 1,
+                total_creeps: 1,
+                builder_creeps: 1,
+            },
+            defense_groups: {
+                total_groups: 1,
+                total_creeps: 3,
+                melee_creeps: 1,
+                ranged_creeps: 1,
+                healer_creeps: 1,
+            },
+            attack_groups: {
+                total_groups: 1,
+                total_creeps: 4,
+                melee_creeps: 1,
+                ranged_creeps: 2,
+                healer_creeps: 1,
+            }, 
+            capture_groups: {
+                total_groups: 0,
+            },   
+
+        },
+        Tier1: {
             harvester_groups: {
                 total_groups: 1,
                 total_creeps: 4,
@@ -50,43 +82,43 @@ let TState = {
                 healer_creeps: 1,
             },
             attack_groups: {
-                total_groups: 0,
-                total_creeps: 0,
-            },
+                total_groups: 1,
+                total_creeps: 4,
+                melee_creeps: 1,
+                ranged_creeps: 2,
+                healer_creeps: 1,
+            },  
             capture_groups: {
                 total_groups: 0,
-                total_creeps: 0,
-            },
-        },
-        /*Tier1: {
-            harvester_groups: {
-                total_groups: 1,
-            },
-            build_groups: {
-                total_groups: 1,
-            },
-            defense_groups: {
-                total_groups: 1,
-            },
-            attack_groups: {
-                total_groups: 0,
-            }, 
-            capture_groups: {
-                total_groups: 0,
-            },               
+            },   
+               
         },
         Tier2: {
             harvester_groups: {
                 total_groups: 1,
+                total_creeps: 4,
+                harvester_creeps: 2,
+                transport_creeps: 2,
+
             },
             build_groups: {
                 total_groups: 1,
+                total_creeps: 1,
+                builder_creeps: 1,
             },
             defense_groups: {
                 total_groups: 1,
+                total_creeps: 3,
+                melee_creeps: 1,
+                ranged_creeps: 1,
+                healer_creeps: 1,
             },
             attack_groups: {
                 total_groups: 2,
+                total_creeps: 4,
+                melee_creeps: 1,
+                ranged_creeps: 2,
+                healer_creeps: 1,
             }, 
             capture_groups: {
                 total_groups: 0,
@@ -95,16 +127,30 @@ let TState = {
         Tier3: {
             harvester_groups: {
                 total_groups: 1,
+                total_creeps: 4,
+                harvester_creeps: 2,
+                transport_creeps: 2,
+
             },
             build_groups: {
                 total_groups: 1,
+                total_creeps: 1,
+                builder_creeps: 1,
             },
             defense_groups: {
-                total_groups: 2,
+                total_groups: 1,
+                total_creeps: 3,
+                melee_creeps: 1,
+                ranged_creeps: 1,
+                healer_creeps: 1,
             },
             attack_groups: {
                 total_groups: 5,
-            }, 
+                total_creeps: 4,
+                melee_creeps: 1,
+                ranged_creeps: 2,
+                healer_creeps: 1,
+            },  
             capture_groups: {
                 total_groups: 0,
             },               
@@ -112,20 +158,34 @@ let TState = {
         Tier4: {
             harvester_groups: {
                 total_groups: 1,
+                total_creeps: 4,
+                harvester_creeps: 2,
+                transport_creeps: 2,
+
             },
             build_groups: {
                 total_groups: 1,
+                total_creeps: 1,
+                builder_creeps: 1,
             },
             defense_groups: {
-                total_groups: 5,
+                total_groups: 1,
+                total_creeps: 3,
+                melee_creeps: 1,
+                ranged_creeps: 1,
+                healer_creeps: 1,
             },
             attack_groups: {
                 total_groups: 10,
-            },
+                total_creeps: 4,
+                melee_creeps: 1,
+                ranged_creeps: 2,
+                healer_creeps: 1,
+            }, 
             capture_groups: {
                 total_groups: 0,
             },                
-        }*/
+        }
     },
 
     CreepBodyPartPrices: {
@@ -149,9 +209,10 @@ let TState = {
 
         TState.Structures.Spawn.InitSpawn();
         TState.Structures.Extensions.InitExtensions();
-        TState.Groups.InitGroups();
-        TState.Sources.InitRoomSources();
         TState.Structures.InitEnergySupply();
+        TState.Sources.InitRoomSources();
+        TState.Groups.InitGroups();
+        TState.Groups.ScanGroups()
         TState.Preflight = true;
     },
 
@@ -200,17 +261,227 @@ let TState = {
         InitGroups:function() {
             for (let i = 0; i<TState.CreepGroupKey.length; i++) {
                 //If CreepGroupKey does not exist. Create it.
-                if (!(TState.CreepGroupKey[i] in TState.CreepGroups)) {
-                    let new_group = {
-                        ID: TState.CreepGroupKey[i]+"-"+TState.CreepGroupIdTicker,
-                        CreepsWrapper:[],
-                        Objectives:[],
-                    }
-                    
+                if (!TState.CreepGroups[TState.CreepGroupKey[i]]) {
                     TState.CreepGroups[TState.CreepGroupKey[i]] = [];
-                    TState.CreepGroups[TState.CreepGroupKey[i]].push(new_group);
-
-                } 
+                }
+                switch (TState.TechLevel) {
+                    //CreepGroupKey: ["harvester_groups", "defense_groups", "attack_groups", "build_groups","capture_groups"],
+                    //TODO: create capture_groups
+                    case "TIER0":
+                        if (TState.CreepGroupKey[i] == "harvester_groups" && TState.CreepGroups[TState.CreepGroupKey[i]].length < TState.GroupTierCriteria.Tier0.harvester_groups.total_groups) {
+                            for (let j = TState.CreepGroups[TState.CreepGroupKey[i]].length; j < TState.GroupTierCriteria.Tier0.harvester_groups.total_groups; j++) {
+                                let new_group = {
+                                    ID: TState.CreepGroupKey[i]+"-"+TState.CreepGroupIdTicker,
+                                    CreepsWrapper:[],
+                                    Objectives:[],
+                                }                 
+                                TState.CreepGroups[TState.CreepGroupKey[i]].push(new_group);
+                                TState.CreepGroupIdTicker++;
+                            }
+                        }
+                        if (TState.CreepGroupKey[i] == "build_groups" && TState.CreepGroups[TState.CreepGroupKey[i]].length < TState.GroupTierCriteria.Tier0.build_groups.total_groups) {
+                            for (let j = TState.CreepGroups[TState.CreepGroupKey[i]].length; j < TState.GroupTierCriteria.Tier0.build_groups.total_groups; j++) {
+                                let new_group = {
+                                    ID: TState.CreepGroupKey[i]+"-"+TState.CreepGroupIdTicker,
+                                    CreepsWrapper:[],
+                                    Objectives:[],
+                                }                 
+                                TState.CreepGroups[TState.CreepGroupKey[i]].push(new_group);
+                                TState.CreepGroupIdTicker++;
+                            }
+                        }
+                        if (TState.CreepGroupKey[i] == "defense_groups" && TState.CreepGroups[TState.CreepGroupKey[i]].length < TState.GroupTierCriteria.Tier0.defense_groups.total_groups) {
+                            for (let j = TState.CreepGroups[TState.CreepGroupKey[i]].length; j < TState.GroupTierCriteria.Tier0.defense_groups.total_groups; j++) {
+                                let new_group = {
+                                    ID: TState.CreepGroupKey[i]+"-"+TState.CreepGroupIdTicker,
+                                    CreepsWrapper:[],
+                                    Objectives:[],
+                                }                 
+                                TState.CreepGroups[TState.CreepGroupKey[i]].push(new_group);
+                                TState.CreepGroupIdTicker++;
+                            }
+                        }
+                        if (TState.CreepGroupKey[i] == "attack_groups" && TState.CreepGroups[TState.CreepGroupKey[i]].length < TState.GroupTierCriteria.Tier0.attack_groups.total_groups) {
+                            for (let j = TState.CreepGroups[TState.CreepGroupKey[i]].length; j < TState.GroupTierCriteria.Tier0.attack_groups.total_groups; j++) {
+                                let new_group = {
+                                    ID: TState.CreepGroupKey[i]+"-"+TState.CreepGroupIdTicker,
+                                    CreepsWrapper:[],
+                                    Objectives:[],
+                                }                 
+                                TState.CreepGroups[TState.CreepGroupKey[i]].push(new_group);
+                                TState.CreepGroupIdTicker++;
+                            }
+                        }
+                    break;
+                    case "TIER1":
+                        if (TState.CreepGroupKey[i] == "harvester_groups" && TState.CreepGroups[TState.CreepGroupKey[i]].length < TState.GroupTierCriteria.Tier1.harvester_groups.total_groups) {
+                            for (let j = TState.CreepGroups[TState.CreepGroupKey[i]].length; j < TState.GroupTierCriteria.Tier1.harvester_groups.total_groups; j++) {
+                                let new_group = {
+                                    ID: TState.CreepGroupKey[i]+"-"+TState.CreepGroupIdTicker,
+                                    CreepsWrapper:[],
+                                    Objectives:[],
+                                }                 
+                                TState.CreepGroups[TState.CreepGroupKey[i]].push(new_group);
+                            }
+                        }
+                        if (TState.CreepGroupKey[i] == "build_groups" && TState.CreepGroups[TState.CreepGroupKey[i]].length < TState.GroupTierCriteria.Tier1.build_groups.total_groups) {
+                            for (let j = TState.CreepGroups[TState.CreepGroupKey[i]].length; j < TState.GroupTierCriteria.Tier1.build_groups.total_groups; j++) {
+                                let new_group = {
+                                    ID: TState.CreepGroupKey[i]+"-"+TState.CreepGroupIdTicker,
+                                    CreepsWrapper:[],
+                                    Objectives:[],
+                                }                 
+                                TState.CreepGroups[TState.CreepGroupKey[i]].push(new_group);
+                            }
+                        }
+                        if (TState.CreepGroupKey[i] == "defense_groups" && TState.CreepGroups[TState.CreepGroupKey[i]].length < TState.GroupTierCriteria.Tier1.defense_groups.total_groups) {
+                            for (let j = TState.CreepGroups[TState.CreepGroupKey[i]].length; j < TState.GroupTierCriteria.Tier1.defense_groups.total_groups; j++) {
+                                let new_group = {
+                                    ID: TState.CreepGroupKey[i]+"-"+TState.CreepGroupIdTicker,
+                                    CreepsWrapper:[],
+                                    Objectives:[],
+                                }                 
+                                TState.CreepGroups[TState.CreepGroupKey[i]].push(new_group);
+                            }
+                        }
+                        if (TState.CreepGroupKey[i] == "attack_groups" && TState.CreepGroups[TState.CreepGroupKey[i]].length < TState.GroupTierCriteria.Tier1.attack_groups.total_groups) {
+                            for (let j = TState.CreepGroups[TState.CreepGroupKey[i]].length; j < TState.GroupTierCriteria.Tier1.attack_groups.total_groups; j++) {
+                                let new_group = {
+                                    ID: TState.CreepGroupKey[i]+"-"+TState.CreepGroupIdTicker,
+                                    CreepsWrapper:[],
+                                    Objectives:[],
+                                }                 
+                                TState.CreepGroups[TState.CreepGroupKey[i]].push(new_group);
+                            }
+                        }
+                    break;
+                    case "TIER2":
+                        if (TState.CreepGroupKey[i] == "harvester_groups" && TState.CreepGroups[TState.CreepGroupKey[i]].length < TState.GroupTierCriteria.Tier2.harvester_groups.total_groups) {
+                            for (let j = TState.CreepGroups[TState.CreepGroupKey[i]].length; j < TState.GroupTierCriteria.Tier2.harvester_groups.total_groups; j++) {
+                                let new_group = {
+                                    ID: TState.CreepGroupKey[i]+"-"+TState.CreepGroupIdTicker,
+                                    CreepsWrapper:[],
+                                    Objectives:[],
+                                }                 
+                                TState.CreepGroups[TState.CreepGroupKey[i]].push(new_group);
+                            }
+                        }
+                        if (TState.CreepGroupKey[i] == "build_groups" && TState.CreepGroups[TState.CreepGroupKey[i]].length < TState.GroupTierCriteria.Tier2.build_groups.total_groups) {
+                            for (let j = TState.CreepGroups[TState.CreepGroupKey[i]].length; j < TState.GroupTierCriteria.Tier2.build_groups.total_groups; j++) {
+                                let new_group = {
+                                    ID: TState.CreepGroupKey[i]+"-"+TState.CreepGroupIdTicker,
+                                    CreepsWrapper:[],
+                                    Objectives:[],
+                                }                 
+                                TState.CreepGroups[TState.CreepGroupKey[i]].push(new_group);
+                            }
+                        }
+                        if (TState.CreepGroupKey[i] == "defense_groups" && TState.CreepGroups[TState.CreepGroupKey[i]].length < TState.GroupTierCriteria.Tier2.defense_groups.total_groups) {
+                            for (let j = TState.CreepGroups[TState.CreepGroupKey[i]].length; j < TState.GroupTierCriteria.Tier2.defense_groups.total_groups; j++) {
+                                let new_group = {
+                                    ID: TState.CreepGroupKey[i]+"-"+TState.CreepGroupIdTicker,
+                                    CreepsWrapper:[],
+                                    Objectives:[],
+                                }                 
+                                TState.CreepGroups[TState.CreepGroupKey[i]].push(new_group);
+                            }
+                        }
+                        if (TState.CreepGroupKey[i] == "attack_groups" && TState.CreepGroups[TState.CreepGroupKey[i]].length < TState.GroupTierCriteria.Tier2.attack_groups.total_groups) {
+                            for (let j = TState.CreepGroups[TState.CreepGroupKey[i]].length; j < TState.GroupTierCriteria.Tier2.attack_groups.total_groups; j++) {
+                                let new_group = {
+                                    ID: TState.CreepGroupKey[i]+"-"+TState.CreepGroupIdTicker,
+                                    CreepsWrapper:[],
+                                    Objectives:[],
+                                }                 
+                                TState.CreepGroups[TState.CreepGroupKey[i]].push(new_group);
+                            }
+                        }
+                    break;
+                    case "TIER3":
+                        if (TState.CreepGroupKey[i] == "harvester_groups" && TState.CreepGroups[TState.CreepGroupKey[i]].length < TState.GroupTierCriteria.Tier3.harvester_groups.total_groups) {
+                            for (let j = TState.CreepGroups[TState.CreepGroupKey[i]].length; j < TState.GroupTierCriteria.Tier3.harvester_groups.total_groups; j++) {
+                                let new_group = {
+                                    ID: TState.CreepGroupKey[i]+"-"+TState.CreepGroupIdTicker,
+                                    CreepsWrapper:[],
+                                    Objectives:[],
+                                }                 
+                                TState.CreepGroups[TState.CreepGroupKey[i]].push(new_group);
+                            }
+                        }
+                        if (TState.CreepGroupKey[i] == "build_groups" && TState.CreepGroups[TState.CreepGroupKey[i]].length < TState.GroupTierCriteria.Tier3.build_groups.total_groups) {
+                            for (let j = TState.CreepGroups[TState.CreepGroupKey[i]].length; j < TState.GroupTierCriteria.Tier3.build_groups.total_groups; j++) {
+                                let new_group = {
+                                    ID: TState.CreepGroupKey[i]+"-"+TState.CreepGroupIdTicker,
+                                    CreepsWrapper:[],
+                                    Objectives:[],
+                                }                 
+                                TState.CreepGroups[TState.CreepGroupKey[i]].push(new_group);
+                            }
+                        }
+                        if (TState.CreepGroupKey[i] == "defense_groups" && TState.CreepGroups[TState.CreepGroupKey[i]].length < TState.GroupTierCriteria.Tier3.defense_groups.total_groups) {
+                            for (let j = TState.CreepGroups[TState.CreepGroupKey[i]].length; j < TState.GroupTierCriteria.Tier3.defense_groups.total_groups; j++) {
+                                let new_group = {
+                                    ID: TState.CreepGroupKey[i]+"-"+TState.CreepGroupIdTicker,
+                                    CreepsWrapper:[],
+                                    Objectives:[],
+                                }                 
+                                TState.CreepGroups[TState.CreepGroupKey[i]].push(new_group);
+                            }
+                        }
+                        if (TState.CreepGroupKey[i] == "attack_groups" && TState.CreepGroups[TState.CreepGroupKey[i]].length < TState.GroupTierCriteria.Tier3.attack_groups.total_groups) {
+                            for (let j = TState.CreepGroups[TState.CreepGroupKey[i]].length; j < TState.GroupTierCriteria.Tier3.attack_groups.total_groups; j++) {
+                                let new_group = {
+                                    ID: TState.CreepGroupKey[i]+"-"+TState.CreepGroupIdTicker,
+                                    CreepsWrapper:[],
+                                    Objectives:[],
+                                }                 
+                                TState.CreepGroups[TState.CreepGroupKey[i]].push(new_group);
+                            }
+                        }
+                    break;
+                    case "TIER4":
+                        if (TState.CreepGroupKey[i] == "harvester_groups" && TState.CreepGroups[TState.CreepGroupKey[i]].length < TState.GroupTierCriteria.Tier4.harvester_groups.total_groups) {
+                            for (let j = TState.CreepGroups[TState.CreepGroupKey[i]].length; j < TState.GroupTierCriteria.Tier4.harvester_groups.total_groups; j++) {
+                                let new_group = {
+                                    ID: TState.CreepGroupKey[i]+"-"+TState.CreepGroupIdTicker,
+                                    CreepsWrapper:[],
+                                    Objectives:[],
+                                }                 
+                                TState.CreepGroups[TState.CreepGroupKey[i]].push(new_group);
+                            }
+                        }
+                        if (TState.CreepGroupKey[i] == "build_groups" && TState.CreepGroups[TState.CreepGroupKey[i]].length < TState.GroupTierCriteria.Tier4.build_groups.total_groups) {
+                            for (let j = TState.CreepGroups[TState.CreepGroupKey[i]].length; j < TState.GroupTierCriteria.Tier4.build_groups.total_groups; j++) {
+                                let new_group = {
+                                    ID: TState.CreepGroupKey[i]+"-"+TState.CreepGroupIdTicker,
+                                    CreepsWrapper:[],
+                                    Objectives:[],
+                                }                 
+                                TState.CreepGroups[TState.CreepGroupKey[i]].push(new_group);
+                            }
+                        }
+                        if (TState.CreepGroupKey[i] == "defense_groups" && TState.CreepGroups[TState.CreepGroupKey[i]].length < TState.GroupTierCriteria.Tier4.defense_groups.total_groups) {
+                            for (let j = TState.CreepGroups[TState.CreepGroupKey[i]].length; j < TState.GroupTierCriteria.Tier4.defense_groups.total_groups; j++) {
+                                let new_group = {
+                                    ID: TState.CreepGroupKey[i]+"-"+TState.CreepGroupIdTicker,
+                                    CreepsWrapper:[],
+                                    Objectives:[],
+                                }                 
+                                TState.CreepGroups[TState.CreepGroupKey[i]].push(new_group);
+                            }
+                        }
+                        if (TState.CreepGroupKey[i] == "attack_groups" && TState.CreepGroups[TState.CreepGroupKey[i]].length < TState.GroupTierCriteria.Tier4.attack_groups.total_groups) {
+                            for (let j = TState.CreepGroups[TState.CreepGroupKey[i]].length; j < TState.GroupTierCriteria.Tier4.attack_groups.total_groups; j++) {
+                                let new_group = {
+                                    ID: TState.CreepGroupKey[i]+"-"+TState.CreepGroupIdTicker,
+                                    CreepsWrapper:[],
+                                    Objectives:[],
+                                }                 
+                                TState.CreepGroups[TState.CreepGroupKey[i]].push(new_group);
+                            }
+                        }
+                    break;
+                }               
             }
         },
 
@@ -218,230 +489,1091 @@ let TState = {
             for (let i = 0; i<TState.CreepGroupKey.length; i++) {
                 if ((TState.CreepGroupKey[i] in TState.CreepGroups)) {
                     //CreepGroupKey: ["harvester_groups", "defense_groups", "attack_groups", "build_groups","capture_groups"],
-                    switch (TState.TechLevel) {
-                        case"TIER0":
-                            if (TState.CreepGroupKey[i] == "harvester_groups") {
-                                for (let j = 0; j < TState.CreepGroups[TState.CreepGroupKey[i]].length; j++) {
-                                    if (TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.length == 0) {
-                                        for (let k = 0; k < TState.GroupUpgradeCriteria.Tier0.harvester_groups.harvester_creeps; k++) {
-                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrappers.push(
-                                                Wrapper = {
-                                                    GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
-                                                    CreepType: "harvester",
-                                                    Creep: null,
+                    //TODO Add capture groups
 
-                                                }
-                                            );
-                                        }   
-                                        for (let k = 0; k < TState.GroupUpgradeCriteria.Tier0.harvester_groups.transport_creeps; k++) {
-                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrappers.push(
-                                                Wrapper = {
-                                                    GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
-                                                    CreepType: "transporter",
-                                                    Creep: null,
-                                                }
-                                            );
+                    if (TState.CreepGroupKey[i] == "harvester_groups") {
+                        for (let j = 0; j < TState.CreepGroups[TState.CreepGroupKey[i]].length; j++) {
+                            if (TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.length == 0) {
+                                switch(TState.TechLevel) {
+                                    case "TIER0":
+                                        for (let k = 0; k < TState.GroupTierCriteria.Tier0.harvester_groups.harvester_creeps; k++) {
+                                            let Wrapper = {
+                                                ID: TState.CreepIdTicker++,
+                                                GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
+                                                CreepType: "harvester",
+                                                Creep: null,
+        
+                                            };
+                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.push(Wrapper);
+                                        }  
+        
+                                        for (let k = 0; k < TState.GroupTierCriteria.Tier0.harvester_groups.transport_creeps; k++) {
+                                            let Wrapper = {
+                                                ID: TState.CreepIdTicker++,
+                                                GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
+                                                CreepType: "transporter",
+                                                Creep: null,
+                                            };
+                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.push(Wrapper);
                                         }
-                                    } else if (TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.length > 0 && TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.length < TState.GroupUpgradeCriteria.Tier0.harvester_groups.total_creeps) {
-                                        let harvester_total = 0;
-                                        let transport_total = 0;
-                                        
-                                        for (let k = 0; k <TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.length; k++) {
-                                            if (TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper[k].CreepType == "harvester") {
-                                                harvester_total++;
-                                            }
-                                            if (TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper[k].CreepType == "transporter") {
-                                                transport_total++;
-                                            }
+                                    break;
+                                    case "TIER1":
+                                        for (let k = 0; k < TState.GroupTierCriteria.Tier1.harvester_groups.harvester_creeps; k++) {
+                                            let Wrapper = {
+                                                ID: TState.CreepIdTicker++,
+                                                GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
+                                                CreepType: "harvester",
+                                                Creep: null,
+        
+                                            };
+                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.push(Wrapper);
+                                        }  
+        
+                                        for (let k = 0; k < TState.GroupTierCriteria.Tier1.harvester_groups.transport_creeps; k++) {
+                                            let Wrapper = {
+                                                ID: TState.CreepIdTicker++,
+                                                GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
+                                                CreepType: "transporter",
+                                                Creep: null,
+                                            };
+                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.push(Wrapper);
                                         }
+                                    break;
+                                    case "TIER2":
+                                        for (let k = 0; k < TState.GroupTierCriteria.Tier2.harvester_groups.harvester_creeps; k++) {
+                                            let Wrapper = {
+                                                ID: TState.CreepIdTicker++,
+                                                GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
+                                                CreepType: "harvester",
+                                                Creep: null,
+        
+                                            };
+                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.push(Wrapper);
+                                        }  
+        
+                                        for (let k = 0; k < TState.GroupTierCriteria.Tier2.harvester_groups.transport_creeps; k++) {
+                                            let Wrapper = {
+                                                ID: TState.CreepIdTicker++,
+                                                GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
+                                                CreepType: "transporter",
+                                                Creep: null,
+                                            };
+                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.push(Wrapper);
+                                        }
+                                    break;
+                                    case "TIER3":
+                                        for (let k = 0; k < TState.GroupTierCriteria.Tier3.harvester_groups.harvester_creeps; k++) {
+                                            let Wrapper = {
+                                                ID: TState.CreepIdTicker++,
+                                                GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
+                                                CreepType: "harvester",
+                                                Creep: null,
+        
+                                            };
+                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.push(Wrapper);
+                                        }  
+        
+                                        for (let k = 0; k < TState.GroupTierCriteria.Tier3.harvester_groups.transport_creeps; k++) {
+                                            let Wrapper = {
+                                                ID: TState.CreepIdTicker++,
+                                                GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
+                                                CreepType: "transporter",
+                                                Creep: null,
+                                            };
+                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.push(Wrapper);
+                                        }
+                                    break;
+                                    case "TIER4":
+                                        for (let k = 0; k < TState.GroupTierCriteria.Tier4.harvester_groups.harvester_creeps; k++) {
+                                            let Wrapper = {
+                                                ID: TState.CreepIdTicker++,
+                                                GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
+                                                CreepType: "harvester",
+                                                Creep: null,
+        
+                                            };
+                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.push(Wrapper);
+                                        }  
+        
+                                        for (let k = 0; k < TState.GroupTierCriteria.Tier4.harvester_groups.transport_creeps; k++) {
+                                            let Wrapper = {
+                                                ID: TState.CreepIdTicker++,
+                                                GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
+                                                CreepType: "transporter",
+                                                Creep: null,
+                                            };
+                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.push(Wrapper);
+                                        }
+                                    break;
 
-                                        
-                                        for (let k = harvester_total; k < TState.GroupUpgradeCriteria.Tier0.harvester_groups.harvester_creeps; k++) {
-                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrappers.push(
-                                                Wrapper = {
-                                                    GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
-                                                    CreepType: "harvester",
-                                                    Creep: null,
+                                }
 
-                                                }
-                                            );
+                            } else if (TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.length > 0) {
+                                let harvester_total = 0;
+                                let transport_total = 0;
+                                
+                                for (let k = 0; k <TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.length; k++) {
+                                    if (TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper[k].CreepType == "harvester") {
+                                        harvester_total++;
+                                    }
+                                    if (TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper[k].CreepType == "transporter") {
+                                        transport_total++;
+                                    }
+                                }
+
+                                switch (TState.TechLevel) {
+                                    case "TIER0":
+                                        for (let k = harvester_total; k < TState.GroupTierCriteria.Tier0.harvester_groups.harvester_creeps; k++) {
+                                            let Wrapper = {
+                                                ID: TState.CreepIdTicker++,
+                                                GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
+                                                CreepType: "harvester",
+                                                Creep: null,
+        
+                                            };
+                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.push(Wrapper);
+                                            
                                         }
                                     
-
+        
                                 
-                                        for (let k = transport_total; k < TState.GroupUpgradeCriteria.Tier0.harvester_groups.transport_creeps; k++) {
-                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrappers.push(
-                                                Wrapper = {
-                                                    GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
-                                                    CreepType: "transporter",
-                                                    Creep: null,
-                                                }
-                                            );
+                                        for (let k = transport_total; k < TState.GroupTierCriteria.Tier0.harvester_groups.transport_creeps; k++) {
+                                            let Wrapper = {
+                                                ID: TState.CreepIdTicker++,
+                                                GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
+                                                CreepType: "transporter",
+                                                Creep: null,
+                                            };
+                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.push(Wrapper);
                                         }
-                                            
+                                    break;
+                                    case "TIER1":
+                                        for (let k = harvester_total; k < TState.GroupTierCriteria.Tier1.harvester_groups.harvester_creeps; k++) {
+                                            let Wrapper = {
+                                                ID: TState.CreepIdTicker++,
+                                                GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
+                                                CreepType: "harvester",
+                                                Creep: null,
+        
+                                            };
+                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.push(Wrapper);
+                                        }
+                                    
+        
+                                
+                                        for (let k = transport_total; k < TState.GroupTierCriteria.Tier1.harvester_groups.transport_creeps; k++) {
+                                            let Wrapper = {
+                                                ID: TState.CreepIdTicker++,
+                                                GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
+                                                CreepType: "transporter",
+                                                Creep: null,
+                                            };
+                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.push(Wrapper);
+                                        }
+                                    break;
+                                    case "TIER2":
+                                        for (let k = harvester_total; k < TState.GroupTierCriteria.Tier2.harvester_groups.harvester_creeps; k++) {
+                                            let Wrapper = {
+                                                ID: TState.CreepIdTicker++,
+                                                GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
+                                                CreepType: "harvester",
+                                                Creep: null,
+        
+                                            };
+                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.push(Wrapper);
+                                        }
+                                    
+        
+                                
+                                        for (let k = transport_total; k < TState.GroupTierCriteria.Tier2.harvester_groups.transport_creeps; k++) {
+                                            let Wrapper = {
+                                                ID: TState.CreepIdTicker++,
+                                                GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
+                                                CreepType: "transporter",
+                                                Creep: null,
+                                            };
+                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.push(Wrapper);
+                                        }
+                                    break;
+                                    case "TIER3":
+                                        for (let k = harvester_total; k < TState.GroupTierCriteria.Tier3.harvester_groups.harvester_creeps; k++) {
+                                            let Wrapper = {
+                                                ID: TState.CreepIdTicker++,
+                                                GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
+                                                CreepType: "harvester",
+                                                Creep: null,
+        
+                                            };
+                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.push(Wrapper);
+                                        }
+                                    
+        
+                                
+                                        for (let k = transport_total; k < TState.GroupTierCriteria.Tier3.harvester_groups.transport_creeps; k++) {
+                                            let Wrapper = {
+                                                ID: TState.CreepIdTicker++,
+                                                GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
+                                                CreepType: "transporter",
+                                                Creep: null,
+                                            };
+                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.push(Wrapper);
+                                        }
+                                    break;
+                                    case "TIER4":
+                                        for (let k = harvester_total; k < TState.GroupTierCriteria.Tier4.harvester_groups.harvester_creeps; k++) {
+                                            let Wrapper = {
+                                                ID: TState.CreepIdTicker++,
+                                                GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
+                                                CreepType: "harvester",
+                                                Creep: null,
+        
+                                            };
+                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.push(Wrapper);
+                                        }
+                                    
+        
+                                
+                                        for (let k = transport_total; k < TState.GroupTierCriteria.Tier4.harvester_groups.transport_creeps; k++) {
+                                            let Wrapper = {
+                                                ID: TState.CreepIdTicker++,
+                                                GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
+                                                CreepType: "transporter",
+                                                Creep: null,
+                                            };
+                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.push(Wrapper);
+                                        }
+                                    break;
+                                }                                    
+                            }
+                        }
+                    }                    
+                    
+                    if (TState.CreepGroupKey[i] == "build_groups") {
+                        for (let j =0; j< TState.CreepGroups[TState.CreepGroupKey[i]].length; j++) {
+                            if (TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.length == 0) {
+                                switch (TState.TechLevel) {
+                                    case "TIER0":
+                                        for (let k = 0; k < TState.GroupTierCriteria.Tier0.build_groups.builder_creeps; k++) {
+                                            let Wrapper = {
+                                                ID: TState.CreepIdTicker++,
+                                                GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
+                                                CreepType: "builder",
+                                                Creep: null,
+        
+                                            };
+                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.push(Wrapper);
+                                        }  
+                                    break;
+                                    case "TIER1":
+                                        for (let k = 0; k < TState.GroupTierCriteria.Tier1.build_groups.builder_creeps; k++) {
+                                            let Wrapper = {
+                                                ID: TState.CreepIdTicker++,
+                                                GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
+                                                CreepType: "builder",
+                                                Creep: null,
+        
+                                            };
+                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.push(Wrapper);
+                                        } 
+                                    break;
+                                    case "TIER2":
+                                        for (let k = 0; k < TState.GroupTierCriteria.Tier2.build_groups.builder_creeps; k++) {
+                                            let Wrapper = {
+                                                ID: TState.CreepIdTicker++,
+                                                GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
+                                                CreepType: "builder",
+                                                Creep: null,
+        
+                                            };
+                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.push(Wrapper);
+                                        } 
+                                    break;
+                                    case "TIER3":
+                                        for (let k = 0; k < TState.GroupTierCriteria.Tier3.build_groups.builder_creeps; k++) {
+                                            let Wrapper = {
+                                                ID: TState.CreepIdTicker++,
+                                                GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
+                                                CreepType: "builder",
+                                                Creep: null,
+        
+                                            };
+                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.push(Wrapper);
+                                        } 
+                                    break;
+                                    case "TIER4":
+                                        for (let k = 0; k < TState.GroupTierCriteria.Tier4.build_groups.builder_creeps; k++) {
+                                            let Wrapper = {
+                                                ID: TState.CreepIdTicker++,
+                                                GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
+                                                CreepType: "builder",
+                                                Creep: null,
+        
+                                            };
+                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.push(Wrapper);
+                                        } 
+                                    break;
+                                }
+                                 
+                            } else if (TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.length > 0) {
+                                let builder_total = 0;
+                                for (let k = 0; k <TState.CreepsGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.length; k++) {
+                                    if (TState.CreepsGroups[TState.CreepGroupKey[i]][j].CreepsWrapper[k].CreepType == "builder") {
+                                        builder_total++;
                                     }
                                 }
+                                
+                                switch(TState.TechLevel) {
+                                    case "TIER0":
+                                        for (let k = transport_total; k < TState.GroupTierCriteria.Tier0.build_groups.builder_creeps; k++) {
+                                            let Wrapper = {
+                                                GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
+                                                CreepType: "builder",
+                                                Creep: null,
+                                            };
+                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.push(Wrapper);
+                                        }
+                                    break;
+                                    case "TIER1":
+                                        for (let k = transport_total; k < TState.GroupTierCriteria.Tier1.build_groups.builder_creeps; k++) {
+                                            let Wrapper = {
+                                                GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
+                                                CreepType: "builder",
+                                                Creep: null,
+                                            };
+                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.push(Wrapper);
+                                        }
+                                    break;
+                                    case "TIER2":
+                                        for (let k = transport_total; k < TState.GroupTierCriteria.Tier2.build_groups.builder_creeps; k++) {
+                                            let Wrapper = {
+                                                GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
+                                                CreepType: "builder",
+                                                Creep: null,
+                                            };
+                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.push(Wrapper);
+                                        }
+                                    break;
+                                    case "TIER3":
+                                        for (let k = transport_total; k < TState.GroupTierCriteria.Tier3.build_groups.builder_creeps; k++) {
+                                            let Wrapper = {
+                                                GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
+                                                CreepType: "builder",
+                                                Creep: null,
+                                            };
+                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.push(Wrapper);
+                                        }
+                                    break;
+                                    case "TIER4":
+                                        for (let k = transport_total; k < TState.GroupTierCriteria.Tier4.build_groups.builder_creeps; k++) {
+                                            let Wrapper = {
+                                                GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
+                                                CreepType: "builder",
+                                                Creep: null,
+                                            };
+                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.push(Wrapper);
+                                        }
+                                    break;
+                                }                                
                             }
-                            if (TState.CreepGroupKey[i] == "build_groups") {
-                                for (let j =0; j< TState.CreepGroups[TState.CreepGroupKey[i]].length; j++) {
-                                    if (TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.length == 0) {
-                                        for (let k = 0; k < TState.GroupUpgradeCriteria.Tier0.build_groups.builder_creeps; k++) {
-                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrappers.push(
-                                                Wrapper = {
-                                                    GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
-                                                    CreepType: "builder",
-                                                    Creep: null,
-
-                                                }
-                                            );
-                                        }   
-                                    } else if (TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.length > 0 && TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.length < TState.GroupUpgradeCriteria.Tier0.build_groups.total_creeps) {
-                                        let builder_total = 0;
-                                        for (let k = 0; k <TState.CreepsGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.length; k++) {
-                                            if (TState.CreepsGroups[TState.CreepGroupKey[i]][j].CreepsWrapper[k].CreepType == "builder") {
-                                                builder_total++;
-                                            }
-                                        }
-                                       
-                                        for (let k = transport_total; k < TState.GroupUpgradeCriteria.Tier0.build_groups.builder_creeps; k++) {
-                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrappers.push(
-                                                Wrapper = {
-                                                    GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
-                                                    CreepType: "builder",
-                                                    Creep: null,
-                                                }
-                                            );
-                                        }
-                                        
-                                    }
-                                }
-                            }
-                            if (TState.CreepGroupKey[i] == "defense_groups") {
-                                for (let j =0; j< TState.CreepGroups[TState.CreepGroupKey[i]].length; j++) {
-                                    if (TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.length == 0) {
-                                        for (let k = 0; k < TState.GroupUpgradeCriteria.Tier0.defense_groups.melee_creeps; k++) {
-                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrappers.push(
-                                                Wrapper = {
-                                                    GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
-                                                    CreepType: "melee",
-                                                    Creep: null,
-
-                                                }
-                                            );
-                                        }
-
-                                        for (let k = 0; k < TState.GroupUpgradeCriteria.Tier0.defense_groups.ranged_creeps; k++) {
-                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrappers.push(
-                                                Wrapper = {
-                                                    GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
-                                                    CreepType: "ranged",
-                                                    Creep: null,
-
-                                                }
-                                            );
-                                        }
-
-                                        for (let k = 0; k < TState.GroupUpgradeCriteria.Tier0.defense_groups.healer_creeps; k++) {
-                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrappers.push(
-                                                Wrapper = {
-                                                    GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
-                                                    CreepType: "healer",
-                                                    Creep: null,
-
-                                                }
-                                            );
-                                        }
-
-
-
-
-
-                                    } else if (TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.length > 0 && TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.length < TState.GroupUpgradeCriteria.Tier0.defense_groups.total_creeps) {
-                                        let melee_total = 0; 
-                                        let ranged_total = 0; 
-                                        let healer_total = 0;
-                                        for (let k = 0; k< TState.CreepsGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.length; k++) {
-                                            if (TState.CreepsGroups[TState.CreepGroupKey[i]][j].CreepsWrapper[k].CreepType == "melee") {
-                                                melee_total++;
-                                            }
-                                            if (TState.CreepsGroups[TState.CreepGroupKey[i]][j].CreepsWrapper[k].CreepType == "ranged") {
-                                                ranged_total++;
-                                            }
-                                            if (TState.CreepsGroups[TState.CreepGroupKey[i]][j].CreepsWrapper[k].CreepType == "healer") {
-                                                healer_total++;
-                                            }
-                                        }
-
-                                        for (let k = melee_total; k < TState.GroupUpgradeCriteria.Tier0.defense_groups.melee_creeps; k++) {
-                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrappers.push(
-                                                Wrapper = {
-                                                    GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
-                                                    CreepType: "melee",
-                                                    Creep: null,
-
-                                                }
-                                            );
-                                        }
-                                        for (let k = ranged_total; k < TState.GroupUpgradeCriteria.Tier0.defense_groups.ranged_creeps; k++) {
-                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrappers.push(
-                                                Wrapper = {
-                                                    GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
-                                                    CreepType: "ranged",
-                                                    Creep: null,
-
-                                                }
-                                            );
-                                        }
-                                        for (let k = healer_total; k < TState.GroupUpgradeCriteria.Tier0.defense_groups.healer_creeps; k++) {
-                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrappers.push(
-                                                Wrapper = {
-                                                    GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
-                                                    CreepType: "healer",
-                                                    Creep: null,
-
-                                                }
-                                            );
-                                        }
-                                    }
-                                }
-                            }
+                        }
                     }
+
+                    if (TState.CreepGroupKey[i] == "defense_groups") {
+                        for (let j =0; j< TState.CreepGroups[TState.CreepGroupKey[i]].length; j++) {
+                            if (TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.length == 0) {
+                                switch (TState.TechLevel) {
+                                    case "TIER0":
+                                        for (let k = 0; k < TState.GroupTierCriteria.Tier0.defense_groups.melee_creeps; k++) {
+                                            let Wrapper = {
+                                                ID: TState.CreepIdTicker++,
+                                                GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
+                                                CreepType: "melee",
+                                                Creep: null,
+        
+                                            };
+                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.push(Wrapper);
+                                        }
+        
+                                        for (let k = 0; k < TState.GroupTierCriteria.Tier0.defense_groups.ranged_creeps; k++) {
+                                            let Wrapper = {
+                                                ID: TState.CreepIdTicker++,
+                                                GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
+                                                CreepType: "ranged",
+                                                Creep: null,
+        
+                                            };
+                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.push(Wrapper);
+                                        }
+        
+                                        for (let k = 0; k < TState.GroupTierCriteria.Tier0.defense_groups.healer_creeps; k++) {
+                                            let Wrapper = {
+                                                ID: TState.CreepIdTicker++,
+                                                GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
+                                                CreepType: "healer",
+                                                Creep: null,
+        
+                                            };
+                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.push(Wrapper);
+                                        }
+                                    break;
+                                    case "TIER1":
+                                        for (let k = 0; k < TState.GroupTierCriteria.Tier1.defense_groups.melee_creeps; k++) {
+                                            let Wrapper = {
+                                                ID: TState.CreepIdTicker++,
+                                                GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
+                                                CreepType: "melee",
+                                                Creep: null,
+        
+                                            };
+                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.push(Wrapper);
+                                        }
+        
+                                        for (let k = 0; k < TState.GroupTierCriteria.Tier1.defense_groups.ranged_creeps; k++) {
+                                            let Wrapper = {
+                                                ID: TState.CreepIdTicker++,
+                                                GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
+                                                CreepType: "ranged",
+                                                Creep: null,
+        
+                                            };
+                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.push(Wrapper);
+                                        }
+        
+                                        for (let k = 0; k < TState.GroupTierCriteria.Tier1.defense_groups.healer_creeps; k++) {
+                                            let Wrapper = {
+                                                ID: TState.CreepIdTicker++,
+                                                GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
+                                                CreepType: "healer",
+                                                Creep: null,
+        
+                                            };
+                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.push(Wrapper);
+                                        }
+                                    break;
+                                    case "TIER2":
+                                        for (let k = 0; k < TState.GroupTierCriteria.Tier2.defense_groups.melee_creeps; k++) {
+                                            let Wrapper = {
+                                                ID: TState.CreepIdTicker++,
+                                                GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
+                                                CreepType: "melee",
+                                                Creep: null,
+        
+                                            };
+                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.push(Wrapper);
+                                        }
+        
+                                        for (let k = 0; k < TState.GroupTierCriteria.Tier2.defense_groups.ranged_creeps; k++) {
+                                            let Wrapper = {
+                                                ID: TState.CreepIdTicker++,
+                                                GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
+                                                CreepType: "ranged",
+                                                Creep: null,
+        
+                                            };
+                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.push(Wrapper);
+                                        }
+        
+                                        for (let k = 0; k < TState.GroupTierCriteria.Tier2.defense_groups.healer_creeps; k++) {
+                                            let Wrapper = {
+                                                ID: TState.CreepIdTicker++,
+                                                GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
+                                                CreepType: "healer",
+                                                Creep: null,
+        
+                                            };
+                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.push(Wrapper);
+                                        }
+                                        break;
+                                    case "TIER3":
+                                        for (let k = 0; k < TState.GroupTierCriteria.Tier3.defense_groups.melee_creeps; k++) {
+                                            let Wrapper = {
+                                                ID: TState.CreepIdTicker++,
+                                                GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
+                                                CreepType: "melee",
+                                                Creep: null,
+        
+                                            };
+                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.push(Wrapper);
+                                        }
+        
+                                        for (let k = 0; k < TState.GroupTierCriteria.Tier3.defense_groups.ranged_creeps; k++) {
+                                            let Wrapper = {
+                                                ID: TState.CreepIdTicker++,
+                                                GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
+                                                CreepType: "ranged",
+                                                Creep: null,
+        
+                                            };
+                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.push(Wrapper);
+                                        }
+        
+                                        for (let k = 0; k < TState.GroupTierCriteria.Tier3.defense_groups.healer_creeps; k++) {
+                                            let Wrapper = {
+                                                ID: TState.CreepIdTicker++,
+                                                GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
+                                                CreepType: "healer",
+                                                Creep: null,
+        
+                                            };
+                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.push(Wrapper);
+                                        }
+                                    break;
+                                    case "TIER4":
+                                        for (let k = 0; k < TState.GroupTierCriteria.Tier4.defense_groups.melee_creeps; k++) {
+                                            let Wrapper = {
+                                                ID: TState.CreepIdTicker++,
+                                                GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
+                                                CreepType: "melee",
+                                                Creep: null,
+        
+                                            };
+                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.push(Wrapper);
+                                        }
+        
+                                        for (let k = 0; k < TState.GroupTierCriteria.Tier4.defense_groups.ranged_creeps; k++) {
+                                            let Wrapper = {
+                                                ID: TState.CreepIdTicker++,
+                                                GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
+                                                CreepType: "ranged",
+                                                Creep: null,
+        
+                                            };
+                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.push(Wrapper);
+                                        }
+        
+                                        for (let k = 0; k < TState.GroupTierCriteria.Tier4.defense_groups.healer_creeps; k++) {
+                                            let Wrapper = {
+                                                ID: TState.CreepIdTicker++,
+                                                GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
+                                                CreepType: "healer",
+                                                Creep: null,
+        
+                                            };
+                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.push(Wrapper);
+                                        }
+                                    break;
+                                }
+
+                            } else if (TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.length > 0) {
+                                let melee_total = 0; 
+                                let ranged_total = 0; 
+                                let healer_total = 0;
+                                for (let k = 0; k< TState.CreepsGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.length; k++) {
+                                    if (TState.CreepsGroups[TState.CreepGroupKey[i]][j].CreepsWrapper[k].CreepType == "melee") {
+                                        melee_total++;
+                                    }
+                                    if (TState.CreepsGroups[TState.CreepGroupKey[i]][j].CreepsWrapper[k].CreepType == "ranged") {
+                                        ranged_total++;
+                                    }
+                                    if (TState.CreepsGroups[TState.CreepGroupKey[i]][j].CreepsWrapper[k].CreepType == "healer") {
+                                        healer_total++;
+                                    }
+                                }
+
+                                switch(TState.TechLevel) {
+                                    case "TIER0":
+                                        for (let k = melee_total; k < TState.GroupTierCriteria.Tier0.defense_groups.melee_creeps; k++) {
+                                            let Wrapper = {
+                                                ID: TState.CreepIdTicker++,
+                                                GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
+                                                CreepType: "melee",
+                                                Creep: null,
+        
+                                            };
+                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.push(Wrapper);
+                                        }
+                                        for (let k = ranged_total; k < TState.GroupTierCriteria.Tier0.defense_groups.ranged_creeps; k++) {
+                                            let Wrapper = {
+                                                ID: TState.CreepIdTicker++,
+                                                GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
+                                                CreepType: "ranged",
+                                                Creep: null,
+        
+                                            };
+                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.push(Wrapper);
+                                        }
+                                        for (let k = healer_total; k < TState.GroupTierCriteria.Tier0.defense_groups.healer_creeps; k++) {
+                                            let Wrapper = {
+                                                ID: TState.CreepIdTicker++,
+                                                GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
+                                                CreepType: "healer",
+                                                Creep: null,
+        
+                                            };
+                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.push(Wrapper);
+                                        }
+                                    break;
+                                    case "TIER1":
+                                        for (let k = melee_total; k < TState.GroupTierCriteria.Tier1.defense_groups.melee_creeps; k++) {
+                                            let Wrapper = {
+                                                ID: TState.CreepIdTicker++,
+                                                GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
+                                                CreepType: "melee",
+                                                Creep: null,
+        
+                                            };
+                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.push(Wrapper);
+                                        }
+                                        for (let k = ranged_total; k < TState.GroupTierCriteria.Tier1.defense_groups.ranged_creeps; k++) {
+                                            let Wrapper = {
+                                                ID: TState.CreepIdTicker++,
+                                                GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
+                                                CreepType: "ranged",
+                                                Creep: null,
+        
+                                            };
+                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.push(Wrapper);
+                                        }
+                                        for (let k = healer_total; k < TState.GroupTierCriteria.Tier1.defense_groups.healer_creeps; k++) {
+                                            let Wrapper = {
+                                                ID: TState.CreepIdTicker++,
+                                                GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
+                                                CreepType: "healer",
+                                                Creep: null,
+        
+                                            };
+                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.push(Wrapper);
+                                        }
+                                    break;
+                                    case "TIER2":
+                                        for (let k = melee_total; k < TState.GroupTierCriteria.Tier2.defense_groups.melee_creeps; k++) {
+                                            let Wrapper = {
+                                                ID: TState.CreepIdTicker++,
+                                                GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
+                                                CreepType: "melee",
+                                                Creep: null,
+        
+                                            };
+                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.push(Wrapper);
+                                        }
+                                        for (let k = ranged_total; k < TState.GroupTierCriteria.Tier2.defense_groups.ranged_creeps; k++) {
+                                            let Wrapper = {
+                                                ID: TState.CreepIdTicker++,
+                                                GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
+                                                CreepType: "ranged",
+                                                Creep: null,
+        
+                                            };
+                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.push(Wrapper);
+                                        }
+                                        for (let k = healer_total; k < TState.GroupTierCriteria.Tier2.defense_groups.healer_creeps; k++) {
+                                            let Wrapper = {
+                                                ID: TState.CreepIdTicker++,
+                                                GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
+                                                CreepType: "healer",
+                                                Creep: null,
+        
+                                            };
+                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.push(Wrapper);
+                                        }
+                                    break;
+                                    case "TIER3":
+                                        for (let k = melee_total; k < TState.GroupTierCriteria.Tier3.defense_groups.melee_creeps; k++) {
+                                            let Wrapper = {
+                                                ID: TState.CreepIdTicker++,
+                                                GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
+                                                CreepType: "melee",
+                                                Creep: null,
+        
+                                            };
+                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.push(Wrapper);
+                                        }
+                                        for (let k = ranged_total; k < TState.GroupTierCriteria.Tier3.defense_groups.ranged_creeps; k++) {
+                                            let Wrapper = {
+                                                ID: TState.CreepIdTicker++,
+                                                GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
+                                                CreepType: "ranged",
+                                                Creep: null,
+        
+                                            };
+                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.push(Wrapper);
+                                        }
+                                        for (let k = healer_total; k < TState.GroupTierCriteria.Tier3.defense_groups.healer_creeps; k++) {
+                                            let Wrapper = {
+                                                ID: TState.CreepIdTicker++,
+                                                GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
+                                                CreepType: "healer",
+                                                Creep: null,
+        
+                                            };
+                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.push(Wrapper);
+                                        }
+                                        break;
+                                    case "TIER4":
+                                        for (let k = melee_total; k < TState.GroupTierCriteria.Tier4.defense_groups.melee_creeps; k++) {
+                                            let Wrapper = {
+                                                ID: TState.CreepIdTicker++,
+                                                GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
+                                                CreepType: "melee",
+                                                Creep: null,
+        
+                                            };
+                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.push(Wrapper);
+                                        }
+                                        for (let k = ranged_total; k < TState.GroupTierCriteria.Tier4.defense_groups.ranged_creeps; k++) {
+                                            let Wrapper = {
+                                                ID: TState.CreepIdTicker++,
+                                                GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
+                                                CreepType: "ranged",
+                                                Creep: null,
+        
+                                            };
+                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.push(Wrapper);
+                                        }
+                                        for (let k = healer_total; k < TState.GroupTierCriteria.Tier4.defense_groups.healer_creeps; k++) {
+                                            let Wrapper = {
+                                                ID: TState.CreepIdTicker++,
+                                                GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
+                                                CreepType: "healer",
+                                                Creep: null,
+        
+                                            };
+                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.push(Wrapper);
+                                        }
+                                    break;
+
+                                }
+
+
+                            }
+                        }
+                    }
+
+                    if (TState.CreepGroupKey[i] == "attack_groups") {
+                        for (let j =0; j< TState.CreepGroups[TState.CreepGroupKey[i]].length; j++) {
+                            if (TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.length == 0) {
+                                switch (TState.TechLevel){
+                                    case "TIER0":
+                                        for (let k = 0; k < TState.GroupTierCriteria.Tier0.attack_groups.melee_creeps; k++) {
+                                            let Wrapper = {
+                                                ID: TState.CreepIdTicker++,
+                                                GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
+                                                CreepType: "melee",
+                                                Creep: null,
+        
+                                            };
+                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.push(Wrapper);
+                                        }
+                                        for (let k = 0; k < TState.GroupTierCriteria.Tier0.attack_groups.ranged_creeps; k++) {
+                                            let Wrapper = {
+                                                ID: TState.CreepIdTicker++,
+                                                GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
+                                                CreepType: "ranged",
+                                                Creep: null,
+        
+                                            };
+                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.push(Wrapper);
+                                        }
+                                        for (let k = 0; k < TState.GroupTierCriteria.Tier0.attack_groups.healer_creeps; k++) {
+                                            let Wrapper = {
+                                                ID: TState.CreepIdTicker++,
+                                                GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
+                                                CreepType: "healer",
+                                                Creep: null,
+        
+                                            };
+                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.push(Wrapper);
+                                        }
+                                    break;
+                                    case "TIER1":
+                                        for (let k = 0; k < TState.GroupTierCriteria.Tier1.attack_groups.melee_creeps; k++) {
+                                            let Wrapper = {
+                                                ID: TState.CreepIdTicker++,
+                                                GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
+                                                CreepType: "melee",
+                                                Creep: null,
+        
+                                            };
+                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.push(Wrapper);
+                                        }
+                                        for (let k = 0; k < TState.GroupTierCriteria.Tier1.attack_groups.ranged_creeps; k++) {
+                                            let Wrapper = {
+                                                ID: TState.CreepIdTicker++,
+                                                GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
+                                                CreepType: "ranged",
+                                                Creep: null,
+        
+                                            };
+                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.push(Wrapper);
+                                        }
+                                        for (let k = 0; k < TState.GroupTierCriteria.Tier1.attack_groups.healer_creeps; k++) {
+                                            let Wrapper = {
+                                                ID: TState.CreepIdTicker++,
+                                                GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
+                                                CreepType: "healer",
+                                                Creep: null,
+        
+                                            };
+                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.push(Wrapper);
+                                        }
+                                    break;
+                                    case "TIER2":
+                                        for (let k = 0; k < TState.GroupTierCriteria.Tier2.attack_groups.melee_creeps; k++) {
+                                            let Wrapper = {
+                                                ID: TState.CreepIdTicker++,
+                                                GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
+                                                CreepType: "melee",
+                                                Creep: null,
+        
+                                            };
+                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.push(Wrapper);
+                                        }
+                                        for (let k = 0; k < TState.GroupTierCriteria.Tier2.attack_groups.ranged_creeps; k++) {
+                                            let Wrapper = {
+                                                ID: TState.CreepIdTicker++,
+                                                GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
+                                                CreepType: "ranged",
+                                                Creep: null,
+        
+                                            };
+                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.push(Wrapper);
+                                        }
+                                        for (let k = 0; k < TState.GroupTierCriteria.Tier2.attack_groups.healer_creeps; k++) {
+                                            let Wrapper = {
+                                                ID: TState.CreepIdTicker++,
+                                                GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
+                                                CreepType: "healer",
+                                                Creep: null,
+        
+                                            };
+                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.push(Wrapper);
+                                        }
+                                    break;
+                                    case "TIER3":
+                                        for (let k = 0; k < TState.GroupTierCriteria.Tier3.attack_groups.melee_creeps; k++) {
+                                            let Wrapper = {
+                                                ID: TState.CreepIdTicker++,
+                                                GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
+                                                CreepType: "melee",
+                                                Creep: null,
+        
+                                            };
+                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.push(Wrapper);
+                                        }
+                                        for (let k = 0; k < TState.GroupTierCriteria.Tier3.attack_groups.ranged_creeps; k++) {
+                                            let Wrapper = {
+                                                ID: TState.CreepIdTicker++,
+                                                GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
+                                                CreepType: "ranged",
+                                                Creep: null,
+        
+                                            };
+                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.push(Wrapper);
+                                        }
+                                        for (let k = 0; k < TState.GroupTierCriteria.Tier3.attack_groups.healer_creeps; k++) {
+                                            let Wrapper = {
+                                                ID: TState.CreepIdTicker++,
+                                                GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
+                                                CreepType: "healer",
+                                                Creep: null,
+        
+                                            };
+                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.push(Wrapper);
+                                        }
+                                    break;
+                                    case "TIER4":
+                                        for (let k = 0; k < TState.GroupTierCriteria.Tier4.attack_groups.melee_creeps; k++) {
+                                            let Wrapper = {
+                                                ID: TState.CreepIdTicker++,
+                                                GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
+                                                CreepType: "melee",
+                                                Creep: null,
+        
+                                            };
+                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.push(Wrapper);
+                                        }
+                                        for (let k = 0; k < TState.GroupTierCriteria.Tier4.attack_groups.ranged_creeps; k++) {
+                                            let Wrapper = {
+                                                ID: TState.CreepIdTicker++,
+                                                GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
+                                                CreepType: "ranged",
+                                                Creep: null,
+        
+                                            };
+                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.push(Wrapper);
+                                        }
+                                        for (let k = 0; k < TState.GroupTierCriteria.Tier4.attack_groups.healer_creeps; k++) {
+                                            let Wrapper = {
+                                                ID: TState.CreepIdTicker++,
+                                                GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
+                                                CreepType: "healer",
+                                                Creep: null,
+        
+                                            };
+                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.push(Wrapper);
+                                        }
+                                    break;
+                                }
+                            } else if (TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.length > 0) {
+                                let melee_total = 0;
+                                let ranged_total = 0; 
+                                let healer_total = 0; 
+                                for (let k = 0; k <TState.CreepsGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.length; k++) {
+                                    if (TState.CreepsGroups[TState.CreepGroupKey[i]][j].CreepsWrapper[k].CreepType == "melee") {
+                                        melee_total++;
+                                    }
+                                    if (TState.CreepsGroups[TState.CreepGroupKey[i]][j].CreepsWrapper[k].CreepType == "ranged") {
+                                        ranged_total++;
+                                    }
+                                    if (TState.CreepsGroups[TState.CreepGroupKey[i]][j].CreepsWrapper[k].CreepType == "healer") {
+                                        healer_total++;
+                                    }
+                                }
+
+                                switch(TState.TechLevel) {
+                                    case "TIER0":
+                                        for (let k = melee_total; k < TState.GroupTierCriteria.Tier0.attack_groups.melee_creeps; k++) {
+                                            let Wrapper = {
+                                                ID: TState.CreepIdTicker++,
+                                                GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
+                                                CreepType: "melee",
+                                                Creep: null,
+                                            };
+                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.push(Wrapper);
+                                        }
+                                        for (let k = ranged_total; k < TState.GroupTierCriteria.Tier0.attack_groups.ranged_creeps; k++) {
+                                            let Wrapper = {
+                                                ID: TState.CreepIdTicker++,
+                                                GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
+                                                CreepType: "melee",
+                                                Creep: null,
+                                            };
+                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.push(Wrapper);
+                                        }
+                                        for (let k = healer_total; k < TState.GroupTierCriteria.Tier0.attack_groups.healer_creeps; k++) {
+                                            let Wrapper = {
+                                                ID: TState.CreepIdTicker++,
+                                                GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
+                                                CreepType: "melee",
+                                                Creep: null,
+                                            };
+                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.push(Wrapper);
+                                        }
+                                    break;
+                                    case "TIER1":
+                                        for (let k = melee_total; k < TState.GroupTierCriteria.Tier1.attack_groups.melee_creeps; k++) {
+                                            let Wrapper = {
+                                                ID: TState.CreepIdTicker++,
+                                                GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
+                                                CreepType: "melee",
+                                                Creep: null,
+                                            };
+                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.push(Wrapper);
+                                        }
+                                        for (let k = ranged_total; k < TState.GroupTierCriteria.Tier1.attack_groups.ranged_creeps; k++) {
+                                            let Wrapper = {
+                                                ID: TState.CreepIdTicker++,
+                                                GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
+                                                CreepType: "melee",
+                                                Creep: null,
+                                            };
+                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.push(Wrapper);
+                                        }
+                                        for (let k = healer_total; k < TState.GroupTierCriteria.Tier1.attack_groups.healer_creeps; k++) {
+                                            let Wrapper = {
+                                                ID: TState.CreepIdTicker++,
+                                                GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
+                                                CreepType: "melee",
+                                                Creep: null,
+                                            };
+                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.push(Wrapper);
+                                        }
+                                    break;
+                                    case "TIER2":
+                                        for (let k = melee_total; k < TState.GroupTierCriteria.Tier2.attack_groups.melee_creeps; k++) {
+                                            let Wrapper = {
+                                                ID: TState.CreepIdTicker++,
+                                                GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
+                                                CreepType: "melee",
+                                                Creep: null,
+                                            };
+                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.push(Wrapper);
+                                        }
+                                        for (let k = ranged_total; k < TState.GroupTierCriteria.Tier2.attack_groups.ranged_creeps; k++) {
+                                            let Wrapper = {
+                                                ID: TState.CreepIdTicker++,
+                                                GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
+                                                CreepType: "melee",
+                                                Creep: null,
+                                            };
+                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.push(Wrapper);
+                                        }
+                                        for (let k = healer_total; k < TState.GroupTierCriteria.Tier2.attack_groups.healer_creeps; k++) {
+                                            let Wrapper = {
+                                                ID: TState.CreepIdTicker++,
+                                                GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
+                                                CreepType: "melee",
+                                                Creep: null,
+                                            };
+                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.push(Wrapper);
+                                        }
+                                    break;
+                                    case "TIER3":
+                                        for (let k = melee_total; k < TState.GroupTierCriteria.Tier3.attack_groups.melee_creeps; k++) {
+                                            let Wrapper = {
+                                                ID: TState.CreepIdTicker++,
+                                                GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
+                                                CreepType: "melee",
+                                                Creep: null,
+                                            };
+                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.push(Wrapper);
+                                        }
+                                        for (let k = ranged_total; k < TState.GroupTierCriteria.Tier3.attack_groups.ranged_creeps; k++) {
+                                            let Wrapper = {
+                                                ID: TState.CreepIdTicker++,
+                                                GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
+                                                CreepType: "melee",
+                                                Creep: null,
+                                            };
+                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.push(Wrapper);
+                                        }
+                                        for (let k = healer_total; k < TState.GroupTierCriteria.Tier3.attack_groups.healer_creeps; k++) {
+                                            let Wrapper = {
+                                                ID: TState.CreepIdTicker++,
+                                                GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
+                                                CreepType: "melee",
+                                                Creep: null,
+                                            };
+                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.push(Wrapper);
+                                        }
+                                    break;
+                                    case "TIER4":
+                                        for (let k = melee_total; k < TState.GroupTierCriteria.Tier4.attack_groups.melee_creeps; k++) {
+                                            let Wrapper = {
+                                                ID: TState.CreepIdTicker++,
+                                                GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
+                                                CreepType: "melee",
+                                                Creep: null,
+                                            };
+                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.push(Wrapper);
+                                        }
+                                        for (let k = ranged_total; k < TState.GroupTierCriteria.Tier4.attack_groups.ranged_creeps; k++) {
+                                            let Wrapper = {
+                                                ID: TState.CreepIdTicker++,
+                                                GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
+                                                CreepType: "melee",
+                                                Creep: null,
+                                            };
+                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.push(Wrapper);
+                                        }
+                                        for (let k = healer_total; k < TState.GroupTierCriteria.Tier4.attack_groups.healer_creeps; k++) {
+                                            let Wrapper = {
+                                                ID: TState.CreepIdTicker++,
+                                                GroupId: TState.CreepGroups[TState.CreepGroupKey[i]][j].ID,
+                                                CreepType: "melee",
+                                                Creep: null,
+                                            };
+                                            TState.CreepGroups[TState.CreepGroupKey[i]][j].CreepsWrapper.push(Wrapper);
+                                        }
+                                    break;
+                                }
+                            }
+                        }
+                    }                    
                 }
             }
         },    
-        /*
-            GroupUpgradeCriteria: {
-                Tier0: {
-                    harvester_groups: {
-                        total_groups: 1,
-                        total_creeps: 4,
-                        harvester_creeps: 2,
-                        transport_creeps: 2,
 
-                    },
-                    build_groups: {
-                        total_groups: 1,
-                        total_creeps: 1,
-                        builder_creeps: 1,
-                    },
-                    defense_groups: {
-                        total_groups: 1,
-                        total_creeps: 3,
-                        melee_creeps: 1,
-                        ranged_creeps: 1,
-                        healer_creeps: 1,
-                    },
-                    attack_groups: {
-                        total_groups: 0,
-                        total_creeps: 0,
-                    },
-                    capture_groups: {
-                        total_groups: 0,
-                        total_creeps: 0,
-                    },
-                },
-            }
-        */
 
 
         Creeps: {
@@ -457,6 +1589,21 @@ export function loop() {
     //TODO: Trigger Inits based off error flags thrown.
     if (!TState.Preflight) {
         TState.Init();
-        console.log(TState);
+        console.log(TState.CreepGroups["harvester_groups"].length);
+        for (let i = 0; i < TState.CreepGroups["harvester_groups"].length; i++) {
+            console.log(TState.CreepGroups["harvester_groups"][i]);
+        }
+        console.log(TState.CreepGroups["build_groups"].length);
+        for (let i = 0; i < TState.CreepGroups["build_groups"].length; i++) {
+            console.log(TState.CreepGroups["build_groups"][i]);
+        }
+        console.log(TState.CreepGroups["defense_groups"].length);
+        for (let i = 0; i < TState.CreepGroups["defense_groups"].length; i++) {
+            console.log(TState.CreepGroups["defense_groups"][i]);
+        }
+        console.log(TState.CreepGroups["attack_groups"].length);
+        for (let i = 0; i < TState.CreepGroups["attack_groups"].length; i++) {
+            console.log(TState.CreepGroups["attack_groups"][i]);
+        }
     }
 }
