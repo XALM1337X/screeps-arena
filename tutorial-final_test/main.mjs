@@ -7,15 +7,13 @@ import { getTicks } from '/game/utils';
 let TState = {
     SpawnDelay: false,
     Preflight: false,
-
     AvailableEnergy: 0,
-
+    CreepGroupIdTicker: 0,
+    CreepIdTicker: 0,
 
     Objectives: [],
     Spawns:  [],
     CreepGroups: [],
-    CreepGroupIdTicker: 0,
-    CreepIdTicker: 0,
     Structures: [],
     ConstructionSites: [],
     Towers: [],
@@ -60,7 +58,7 @@ let TState = {
 
         TState.Structures.Spawn.InitSpawn();
         TState.Structures.Extensions.InitExtensions();
-        TState.Structures.InitEnergySupply();
+        TState.Structures.ScanEnergySupply();
         TState.Resources.InitRoomSources();
         TState.Groups.InitGroupTierCriteria();
         TState.Groups.InitGroups();
@@ -84,10 +82,10 @@ let TState = {
 
 
     Structures: {
-
         InitEnergySupply:function() {
-            //Run through initial spawn and get its energy.
-            //console.log(TState.Spawns.length);
+            TState.Structures.ScanEnergySupply();
+        },
+        ScanEnergySupply:function() {
             let energy = 0;
             for (let i = 0; i < TState.Spawns.length; i++) {
                 energy += TState.Spawns[i].store.getUsedCapacity([RESOURCE_ENERGY]);
@@ -136,51 +134,8 @@ let TState = {
                     }
                 }
             },
-            CanSpawnCreep:function () {
-                TState.Structures.InitEnergySupply();
-                if (TState.SpawnQueue.length > 0) {
-
-
-                    switch (TState.SpawnQueue[0].CreepType) {
-                        
-                        case "harvester":
-                            if (TState.AvailableEnergy >= TState.CreepBodyTierCriteria[TState.TechLevel][TState.SpawnQueue[0].CreepType].total) {
-                                return true;
-                            }
-                        break;
-                        case "transporter":
-                            if (TState.AvailableEnergy >= TState.CreepBodyTierCriteria[TState.TechLevel][TState.SpawnQueue[0].CreepType].total) {
-                                return true;
-                            }
-                        break;
-                        case "builder":
-                            if (TState.AvailableEnergy >= TState.CreepBodyTierCriteria[TState.TechLevel][TState.SpawnQueue[0].CreepType].total) {
-                                return true; 
-                            }
-                        break;
-                        case "melee":
-                            if (TState.AvailableEnergy >= TState.CreepBodyTierCriteria[TState.TechLevel][TState.SpawnQueue[0].CreepType].total) {
-                                return true;
-                            }
-                        break;
-                        case "ranged":
-                            if (TState.AvailableEnergy >= TState.CreepBodyTierCriteria[TState.TechLevel][TState.SpawnQueue[0].CreepType].total) {
-                                return true;
-                            }
-                        break;
-                        case "healer":
-                            if (TState.AvailableEnergy >= TState.CreepBodyTierCriteria[TState.TechLevel][TState.SpawnQueue[0].CreepType].total) {
-                                return true;
-                            }
-                        break;
-                    }
-
-                }
-                return false;
-            },
             PollSpawnQueue:function() {
                 let body = [];
-
                               
                 if (TState.Structures.Spawn.CanSpawnCreep()) {
                     for(let i = 0; i < TState.CreepBodyTierCriteria[TState.TechLevel][TState.SpawnQueue[0].CreepType].move; i++) {
@@ -241,7 +196,47 @@ let TState = {
                     
                 }
                 
-            }
+            },
+            CanSpawnCreep:function () {
+                TState.Structures.ScanEnergySupply();
+                if (TState.SpawnQueue.length > 0) {
+                    switch (TState.SpawnQueue[0].CreepType) {
+                        
+                        case "harvester":
+                            if (TState.AvailableEnergy >= TState.CreepBodyTierCriteria[TState.TechLevel][TState.SpawnQueue[0].CreepType].total) {
+                                return true;
+                            }
+                        break;
+                        case "transporter":
+                            if (TState.AvailableEnergy >= TState.CreepBodyTierCriteria[TState.TechLevel][TState.SpawnQueue[0].CreepType].total) {
+                                return true;
+                            }
+                        break;
+                        case "builder":
+                            if (TState.AvailableEnergy >= TState.CreepBodyTierCriteria[TState.TechLevel][TState.SpawnQueue[0].CreepType].total) {
+                                return true; 
+                            }
+                        break;
+                        case "melee":
+                            if (TState.AvailableEnergy >= TState.CreepBodyTierCriteria[TState.TechLevel][TState.SpawnQueue[0].CreepType].total) {
+                                return true;
+                            }
+                        break;
+                        case "ranged":
+                            if (TState.AvailableEnergy >= TState.CreepBodyTierCriteria[TState.TechLevel][TState.SpawnQueue[0].CreepType].total) {
+                                return true;
+                            }
+                        break;
+                        case "healer":
+                            if (TState.AvailableEnergy >= TState.CreepBodyTierCriteria[TState.TechLevel][TState.SpawnQueue[0].CreepType].total) {
+                                return true;
+                            }
+                        break;
+                    }
+
+                }
+                return false;
+            },
         },
 
         Extensions: {
