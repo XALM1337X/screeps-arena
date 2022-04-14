@@ -206,60 +206,39 @@ let TState = {
                     }
                     let group = "";
                     //CreepGroupKeys: ["harvester_groups", "defense_groups", "attack_groups", "build_groups","capture_groups"],
-                    switch (TState.SpawnQueue[0].CreepType) {
-                        case "harvester":
-                            for (let i = 0; i < TState.CreepGroups["harvester_groups"].length; i++) {
-                                if (TState.CreepGroups["harvester_groups"][i].ID == TState.SpawnQueue[0].GroupId) {
-                                    for (let j = 0; j <TState.CreepGroups["harvester_groups"][i].CreepsWrapper.length; j++) {
-                                        
-                                        if (TState.CreepGroups["harvester_groups"][i].CreepsWrapper[j].ID == TState.SpawnQueue[0].ID && TState.CreepGroups["harvester_groups"][i].CreepsWrapper[j].CreepType == TState.SpawnQueue[0].CreepType) {
-                                            
-                                            for (let k = 0; k < TState.Spawns.length; k++) {
-                                                    let creep_spawn = TState.Spawns[k].spawnCreep(body);
-                                                    if (creep_spawn.error == -4) {
-                                                        console.log("SpawnDelayActive: "+creep_spawn.error);
-                                                        TState.SpawnDelay = true;
-                                                        return;
-                                                    } 
-                                                    if (creep_spawn.error) {
-                                                        console.log(creep_spawn.error);
-                                                        return;
-                                                    }
-                                                    //console.log(TState.AvailableEnergy);
-                                                    console.log("HIT");
-                                                    console.log("THING: "+TState.CreepBodyTierCriteria[TState.TechLevel][TState.SpawnQueue[0].CreepType].total);
-                                                    TState.AvailableEnergy -= TState.CreepBodyTierCriteria[TState.TechLevel][TState.SpawnQueue[0].CreepType].total;
-                                                    TState.Structures.InitEnergySupply();
-                                                    //console.log(TState.AvailableEnergy);
-                                                    TState.CreepGroups["harvester_groups"][i].CreepsWrapper[j].CreepObj = creep_spawn.object;
-                                                    TState.SpawnQueue.splice(0,1);
-                                                    TState.SpawnDelay = true;
-                                                    return;
-                                                
+
+                    for (let i = 0; i < TState.CreepGroups[TState.SpawnQueue[0].GroupType].length; i++) {
+                        if (TState.CreepGroups[TState.SpawnQueue[0].GroupType][i].ID == TState.SpawnQueue[0].GroupId) {
+                            for (let j = 0; j <TState.CreepGroups[TState.SpawnQueue[0].GroupType][i].CreepsWrapper.length; j++) {                                
+                                if (TState.CreepGroups[TState.SpawnQueue[0].GroupType][i].CreepsWrapper[j].ID == TState.SpawnQueue[0].ID && TState.CreepGroups[TState.SpawnQueue[0].GroupType][i].CreepsWrapper[j].CreepType == TState.SpawnQueue[0].CreepType) {                                    
+                                    for (let k = 0; k < TState.Spawns.length; k++) {
+                                            let creep_spawn = TState.Spawns[k].spawnCreep(body);
+                                            if (creep_spawn.error == -4) {
+                                                console.log("SpawnDelayActive: "+creep_spawn.error);
+                                                TState.SpawnDelay = true;
+                                                return;
+                                            } 
+                                            if (creep_spawn.error) {
+                                                console.log(creep_spawn.error);
+                                                TState.SpawnDelay = true;
+                                                return;
                                             }
-                                            
-                                        }
+                                            TState.AvailableEnergy -= TState.CreepBodyTierCriteria[TState.TechLevel][TState.SpawnQueue[0].CreepType].total;
+                                            TState.CreepGroups[TState.SpawnQueue[0].GroupType][i].CreepsWrapper[j].CreepObj = creep_spawn.object;
+                                            TState.SpawnQueue.splice(0,1);
+                                            return;
+                                        
                                     }
+                                    
                                 }
                             }
-                        break;
-                        case "transporter":
-                        break;
-                        case "builder":
-                        break;
-                        case "melee":
-                        break;
-                        case "ranged":
-                        break;
-                        case "healer":
-                        break;
+                        }
+                    }
 
-                    }
-                } else {
-                    if (getTicks() % 30 == 0) {
-                        console.log("Not enough energy");
-                        TState.SpawnDelay = true;
-                    }
+                } else {                    
+                    console.log("Not enough energy");
+                    TState.SpawnDelay = true;
+                    
                 }
                 
             }
