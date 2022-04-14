@@ -176,10 +176,8 @@ let TState = {
             },
             PollSpawnQueue:function() {
                 let body = [];
-                if (TState.SpawnQueue.length == 0) {
-                    return;
-                }
-                                
+
+                              
                 if (TState.Structures.Spawn.CanSpawnCreep()) {
                     for(let i = 0; i < TState.CreepBodyTierCriteria[TState.TechLevel][TState.SpawnQueue[0].CreepType].move; i++) {
                         body.push(MOVE);
@@ -209,30 +207,32 @@ let TState = {
                             for (let i = 0; i < TState.CreepGroups["harvester_groups"].length; i++) {
                                 if (TState.CreepGroups["harvester_groups"][i].ID == TState.SpawnQueue[0].GroupId) {
                                     for (let j = 0; j <TState.CreepGroups["harvester_groups"][i].CreepsWrapper.length; j++) {
-                                        if (TState.CreepGroups["harvester_groups"][i].CreepsWrapper[j].ID == TState.SpawnQueue[0].ID) {
+                                        
+                                        if (TState.CreepGroups["harvester_groups"][i].CreepsWrapper[j].ID == TState.SpawnQueue[0].ID && TState.CreepGroups["harvester_groups"][i].CreepsWrapper[j].CreepType == TState.SpawnQueue[0].CreepType) {
+                                            
                                             for (let k = 0; k < TState.Spawns.length; k++) {
-                                                
-                                                //TODO: START HERE
-                                                if (TState.Spawns[k]) {
                                                     let creep_spawn = TState.Spawns[k].spawnCreep(body);
                                                     if (creep_spawn.error == -4) {
                                                         console.log("SpawnDelayActive: "+creep_spawn.error);
                                                         TState.SpawnDelay = true;
                                                         return;
-                                                    } else if (creep_spawn.error) {
-                                                        console.log(creep.error);
+                                                    } 
+                                                    if (creep_spawn.error) {
+                                                        console.log(creep_spawn.error);
+                                                        return;
                                                     }
+                                                    //console.log(TState.AvailableEnergy);
                                                     TState.AvailableEnergy -= TState.CreepBodyTierCriteria[TState.TechLevel][TState.SpawnQueue[0].CreepType].total;
+                                                    //console.log(TState.AvailableEnergy);
                                                     TState.CreepGroups["harvester_groups"][i].CreepsWrapper[j].CreepObj = creep_spawn.object;
                                                     TState.SpawnQueue.splice(0,1);
-                                                    break;
-                                                }
+                                                    TState.SpawnDelay = true;
+                                                    return;
+                                                
                                             }
                                             
                                         }
                                     }
-                                    
-
                                 }
                             }
                         break;
@@ -248,13 +248,10 @@ let TState = {
                         break;
 
                     }
-                    for (let i = 0; i < TState.Spawns.length; i++) {
-
-                        //if (TState.Spawns[i].spawnCreep())
-                    }
                 } else {
                     if (getTicks() % 30 == 0) {
                         console.log("Not enough energy");
+                        TState.SpawnDelay = true;
                     }
                 }
                 
@@ -1142,12 +1139,12 @@ export function loop() {
     //TODO: Trigger Inits based off error flags thrown.
     if (!TState.Preflight) {
         TState.Init();
+        
         //console.log(TState.SpawnQueue);
         //console.log(TState.CreepBodyTierCriteria);
         
-        /*for (let i = 0; i < TState.CreepGroups["harvester_groups"].length; i++) {
-            console.log(TState.CreepGroups["harvester_groups"][i]);
-        }
+
+        /*
         //console.log(TState.CreepGroups["build_groups"].length);
         for (let i = 0; i < TState.CreepGroups["build_groups"].length; i++) {
             console.log(TState.CreepGroups["build_groups"][i]);
@@ -1162,11 +1159,11 @@ export function loop() {
         }*/
         
     }
-    if (TState.SpawnDelay) {
-        if (getTicks() % 30 == 0) {
-            TState.Structures.Spawn.PollSpawnQueue();
+    if (getTicks() % 30 == 0) {
+        for (let i = 0; i < TState.CreepGroups["harvester_groups"].length; i++) {
+            console.log(TState.CreepGroups["harvester_groups"][i]);
         }
-    } else {
-        TState.Structures.Spawn.PollSpawnQueue();
     }
+
+    TState.Structures.Spawn.PollSpawnQueue();
 }
