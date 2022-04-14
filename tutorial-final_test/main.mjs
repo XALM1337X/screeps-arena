@@ -88,16 +88,17 @@ let TState = {
         InitEnergySupply:function() {
             //Run through initial spawn and get its energy.
             //console.log(TState.Spawns.length);
-            
+            let energy = 0;
             for (let i = 0; i < TState.Spawns.length; i++) {
-                TState.AvailableEnergy += TState.Spawns[i].store.getUsedCapacity([RESOURCE_ENERGY]);
+                energy += TState.Spawns[i].store.getUsedCapacity([RESOURCE_ENERGY]);
             }
 
-            if (TState.Extensions) {
+            if (TState.Extensions && TState.ExitStatus.length > 0) {
                 for (let j = 0; j < TState.Extensions.length; j++) {
-                    TState.AvailableEnergy += TState.Extensions[j].store.getUsedCapacity([RESOURCE_ENERGY]);
+                    energy += TState.Extensions[j].store.getUsedCapacity([RESOURCE_ENERGY]);
                 }
             }
+            TState.AvailableEnergy = energy;
         },
 
 
