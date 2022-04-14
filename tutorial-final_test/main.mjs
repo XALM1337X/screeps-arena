@@ -87,13 +87,15 @@ let TState = {
 
         InitEnergySupply:function() {
             //Run through initial spawn and get its energy.
+            //console.log(TState.Spawns.length);
+            
             for (let i = 0; i < TState.Spawns.length; i++) {
-                TState.AvailableEnergy += TState.Spawns[i].store[RESOURCE_ENERGY];
+                TState.AvailableEnergy += TState.Spawns[i].store.getUsedCapacity([RESOURCE_ENERGY]);
             }
 
             if (TState.Extensions) {
                 for (let j = 0; j < TState.Extensions.length; j++) {
-                    TState.AvailableEnergy += TState.Extensions[j].store[RESOURCE_ENERGY];
+                    TState.AvailableEnergy += TState.Extensions[j].store.getUsedCapacity([RESOURCE_ENERGY]);
                 }
             }
         },
@@ -135,37 +137,42 @@ let TState = {
             },
             CanSpawnCreep:function () {
                 if (TState.SpawnQueue.length > 0) {
-                    TState.Structures.InitEnergySupply();
                     //TODO: Add other types of creeps here later.
+                    //console.log(TState.SpawnQueue[0].CreepType)
+                    //console.log(TState.SpawnQueue[0].ID);
+                    console.log(TState.AvailableEnergy);
+                    //console.log(TState.CreepBodyTierCriteria[TState.TechLevel][TState.SpawnQueue[0].CreepType].total);
+                    //console.log("\n");
+
                     switch (TState.SpawnQueue[0].CreepType) {
                         
                         case "harvester":
-                            if (TState.AvailableEnergy >= TState.CreepBodyTierCriteria[TState.TechLevel]["harvester"].total) {
+                            if (TState.AvailableEnergy >= TState.CreepBodyTierCriteria[TState.TechLevel][TState.SpawnQueue[0].CreepType].total) {
                                 return true;
                             }
                         break;
                         case "transporter":
-                            if (TState.AvailableEnergy >= TState.CreepBodyTierCriteria[TState.TechLevel]["transporter"].total) {
+                            if (TState.AvailableEnergy >= TState.CreepBodyTierCriteria[TState.TechLevel][TState.SpawnQueue[0].CreepType].total) {
                                 return true;
                             }
                         break;
                         case "builder":
-                            if (TState.AvailableEnergy >= TState.CreepBodyTierCriteria[TState.TechLevel]["builder"].total) {
+                            if (TState.AvailableEnergy >= TState.CreepBodyTierCriteria[TState.TechLevel][TState.SpawnQueue[0].CreepType].total) {
                                 return true; 
                             }
                         break;
                         case "melee":
-                            if (TState.AvailableEnergy >= TState.CreepBodyTierCriteria[TState.TechLevel]["melee"].total) {
+                            if (TState.AvailableEnergy >= TState.CreepBodyTierCriteria[TState.TechLevel][TState.SpawnQueue[0].CreepType].total) {
                                 return true;
                             }
                         break;
                         case "ranged":
-                            if (TState.AvailableEnergy >= TState.CreepBodyTierCriteria[TState.TechLevel]["ranged"].total) {
+                            if (TState.AvailableEnergy >= TState.CreepBodyTierCriteria[TState.TechLevel][TState.SpawnQueue[0].CreepType].total) {
                                 return true;
                             }
                         break;
                         case "healer":
-                            if (TState.AvailableEnergy >= TState.CreepBodyTierCriteria[TState.TechLevel]["healer"].total) {
+                            if (TState.AvailableEnergy >= TState.CreepBodyTierCriteria[TState.TechLevel][TState.SpawnQueue[0].CreepType].total) {
                                 return true;
                             }
                         break;
@@ -222,7 +229,10 @@ let TState = {
                                                         return;
                                                     }
                                                     //console.log(TState.AvailableEnergy);
+                                                    console.log("HIT");
+                                                    console.log("THING: "+TState.CreepBodyTierCriteria[TState.TechLevel][TState.SpawnQueue[0].CreepType].total);
                                                     TState.AvailableEnergy -= TState.CreepBodyTierCriteria[TState.TechLevel][TState.SpawnQueue[0].CreepType].total;
+                                                    TState.Structures.InitEnergySupply();
                                                     //console.log(TState.AvailableEnergy);
                                                     TState.CreepGroups["harvester_groups"][i].CreepsWrapper[j].CreepObj = creep_spawn.object;
                                                     TState.SpawnQueue.splice(0,1);
@@ -1142,28 +1152,34 @@ export function loop() {
         
         //console.log(TState.SpawnQueue);
         //console.log(TState.CreepBodyTierCriteria);
-        
-
-        /*
-        //console.log(TState.CreepGroups["build_groups"].length);
-        for (let i = 0; i < TState.CreepGroups["build_groups"].length; i++) {
-            console.log(TState.CreepGroups["build_groups"][i]);
-        }
-        //console.log(TState.CreepGroups["defense_groups"].length);
-        for (let i = 0; i < TState.CreepGroups["defense_groups"].length; i++) {
-            console.log(TState.CreepGroups["defense_groups"][i]);
-        }
-        //console.log(TState.CreepGroups["attack_groups"].length);
-        for (let i = 0; i < TState.CreepGroups["attack_groups"].length; i++) {
-            console.log(TState.CreepGroups["attack_groups"][i]);
-        }*/
-        
     }
     if (getTicks() % 30 == 0) {
-        for (let i = 0; i < TState.CreepGroups["harvester_groups"].length; i++) {
-            console.log(TState.CreepGroups["harvester_groups"][i]);
-        }
+        
     }
 
     TState.Structures.Spawn.PollSpawnQueue();
+    if (getTicks() % 5 == 0) {
+        TState.Structures.InitEnergySupply();
+    }
 }
+
+
+
+/*
+    for (let i = 0; i < TState.CreepGroups["harvester_groups"].length; i++) {
+        console.log(TState.CreepGroups["harvester_groups"][i]);
+    }
+    //console.log(TState.CreepGroups["build_groups"].length);
+    for (let i = 0; i < TState.CreepGroups["build_groups"].length; i++) {
+        console.log(TState.CreepGroups["build_groups"][i]);
+    }
+    //console.log(TState.CreepGroups["defense_groups"].length);
+    for (let i = 0; i < TState.CreepGroups["defense_groups"].length; i++) {
+        console.log(TState.CreepGroups["defense_groups"][i]);
+    }
+    //console.log(TState.CreepGroups["attack_groups"].length);
+    for (let i = 0; i < TState.CreepGroups["attack_groups"].length; i++) {
+        console.log(TState.CreepGroups["attack_groups"][i]);
+    }
+*/
+        
