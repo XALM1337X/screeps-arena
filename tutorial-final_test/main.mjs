@@ -137,13 +137,9 @@ let TState = {
                 }
             },
             CanSpawnCreep:function () {
+                TState.Structures.InitEnergySupply();
                 if (TState.SpawnQueue.length > 0) {
-                    //TODO: Add other types of creeps here later.
-                    //console.log(TState.SpawnQueue[0].CreepType)
-                    //console.log(TState.SpawnQueue[0].ID);
-                    console.log(TState.AvailableEnergy);
-                    //console.log(TState.CreepBodyTierCriteria[TState.TechLevel][TState.SpawnQueue[0].CreepType].total);
-                    //console.log("\n");
+
 
                     switch (TState.SpawnQueue[0].CreepType) {
                         
