@@ -309,6 +309,9 @@ let TState = {
     },
     
     Creeps: {
+        InitSpecialSNSADVCreep:function() {
+
+        },
         InitCreepBodyTierCriteria:function() {
             for (let i = 0; i < TState.TechLevelKeys.length; i++) {                
                 if (!TState.CreepBodyTierCriteria[TState.TechLevelKeys[i]]) {
