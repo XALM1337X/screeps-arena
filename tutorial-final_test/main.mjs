@@ -1,10 +1,13 @@
 import { getObjectsByPrototype } from '/game/utils';
 import { Creep, StructureSpawn, Source, StructureExtension } from '/game/prototypes';
 import { ERR_NOT_IN_RANGE, MOVE, WORK, CARRY, ATTACK, RANGED_ATTACK, HEAL, TOUGH, RESOURCE_ENERGY } from '/game/constants';
-import { utils } from '/game';
+import { utils, arenaInfo } from '/game';
 import { getTicks } from '/game/utils';
 
 let TState = {
+
+    SpecialBitch: null,
+
     SpawnDelay: false,
     Preflight: false,
     AvailableEnergy: 0,
@@ -20,22 +23,21 @@ let TState = {
     WorldContainers: [],
     WorldResources: [],
     ModuleReinitList: [],
-    SpawnQueue: [],
     Extensions: [],
+
+    SpawnQueue: [],
+    TasksQueue: [],
 
     GameType: "",    
     TechLevel: "TIER0", 
     TechLevelKeys: ["TIER0", "TIER1", "TIER2", "TIER3", "TIER4"],
-    GameType: ["ctf","cnc","sns"],
+    GameType: ["Capture the Flag","Collect and Control","Spawn and Swamp"],
     CreepGroupKeys: ["harvester_groups", "defense_groups", "attack_groups", "build_groups","capture_groups"],
     RoomSources: [],
 
 
     GroupTierCriteria: [],
     CreepBodyTierCriteria: [],
-
-
-    
 
     CreepBodyPartPrices: {
         Work: 100,
@@ -141,8 +143,6 @@ let TState = {
         //How many resources we have.
         //And how long its been since "Max tech groups" numbers reached
     },
-
-
     Structures: {
         InitEnergySupply:function() {
             TState.Structures.ScanEnergySupply();
