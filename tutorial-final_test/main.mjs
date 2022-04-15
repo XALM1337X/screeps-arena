@@ -324,7 +324,7 @@ let TState = {
                     Tough: 10,
                 */
                 //TODO: Change values when implementing tier changing.
-                //TODO: ~ TIER1-4 incomplete.
+                //TODO: ~ TIER2-4 incomplete.
                 switch (TState.TechLevelKeys[i]) {
                     case "TIER0":
                         TState.CreepBodyTierCriteria[TState.TechLevelKeys[i]]["harvester"] = {
@@ -391,54 +391,54 @@ let TState = {
                     break;
                     case "TIER1": 
                         TState.CreepBodyTierCriteria[TState.TechLevelKeys[i]]["harvester"] = {
-                            work: 2,    //200
-                            move: 2,    //100
-                            carry: 4,   //200
+                            work: 4,    //400
+                            move: 4,    //200
+                            carry: 8,   //400
                             attack: 0,  //0
                             ranged: 0,  //0
                             heal: 0,    //0
                             tough: 0,   //0
-                            total: 500,
+                            total: 1000,
                         };
                         TState.CreepBodyTierCriteria[TState.TechLevelKeys[i]]["transporter"] = {
                             work: 0,    //0
+                            move: 8,    //400
+                            carry: 12,  //600
+                            attack: 0,  //0
+                            ranged: 0,  //0
+                            heal: 0,    //0
+                            tough: 0,   //0
+                            total: 1000,
+                        };
+                        TState.CreepBodyTierCriteria[TState.TechLevelKeys[i]]["builder"] = {
+                            work: 5,    //500
                             move: 4,    //200
                             carry: 6,   //300
                             attack: 0,  //0
                             ranged: 0,  //0
                             heal: 0,    //0
-                            tough: 0,   //0
-                            total: 500,
-                        };
-                        TState.CreepBodyTierCriteria[TState.TechLevelKeys[i]]["builder"] = {
-                            work: 2,    //200
-                            move: 4,    //200
-                            carry: 2,   //100
-                            attack: 0,  //0
-                            ranged: 0,  //0
-                            heal: 0,    //0
                             tough: 0,   //0 
-                            total: 500,
+                            total: 1000,
                         };
                         TState.CreepBodyTierCriteria[TState.TechLevelKeys[i]]["melee"] = {
                             work: 0,    //0
                             move: 4,    //200
                             carry: 0,   //0
-                            attack: 2,  //160
+                            attack: 5,  //400
                             ranged: 0,  //0
                             heal: 0,    //0
-                            tough: 14,   //60
-                            total: 500,
+                            tough: 40,   //400
+                            total: 1000,
                         };
                         TState.CreepBodyTierCriteria[TState.TechLevelKeys[i]]["ranged"] = {
-                            work: 0,    //0
-                            move: 4,    //200
-                            carry: 0,   //0
-                            attack: 0,  //0
-                            ranged: 1,  //150
-                            heal: 0,    //0
-                            tough: 15,   //150 
-                            total: 500,
+                            work: 0,     //0
+                            move: 4,     //200
+                            carry: 0,    //0
+                            attack: 0,   //0
+                            ranged: 3,   //450
+                            heal: 0,     //0
+                            tough: 35,   //350
+                            total: 1000,
                         };
                         TState.CreepBodyTierCriteria[TState.TechLevelKeys[i]]["healer"] = {
                             work: 0,    //0
@@ -446,9 +446,9 @@ let TState = {
                             carry: 0,   //0
                             attack: 0,  //0
                             ranged: 0,  //0
-                            heal: 1,    //250
-                            tough: 10,  //100
-                            total: 500,
+                            heal: 3,    //750
+                            tough: 20,  //100
+                            total: 1000,
                         };
                     break;
                     case "TIER2":
