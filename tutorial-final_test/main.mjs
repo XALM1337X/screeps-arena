@@ -37,7 +37,7 @@ let TState = {
 
 
     GroupTierCriteria: [],
-    CreepBodyTierCriteria: [],
+    CreepBodyTierCriteria: [],   
 
     CreepBodyPartPrices: {
         Work: 100,
@@ -127,7 +127,7 @@ let TState = {
         TState.Groups.InitCreepWrappers();
         TState.Structures.Spawn.InitSpawnQueue();
     },
-        
+
     //TODO: Start development of objective delegation bot.
     Delegation : {
         ScanEnemyCreeps:function () {
@@ -135,7 +135,7 @@ let TState = {
         },
     },
 
-   
+
 
     //TODO: This will be checked in loop periodically.
     CheckTechUpgradeState:function() {
@@ -826,8 +826,8 @@ let TState = {
             TState.Groups.ScanGroupsCreepWrappers();
         },
 
-        ScanGroups:function() {
-            
+        ScanGroups:function() {            
+
             if (!TState.CreepGroups["harvester_groups"]) {
                 TState.CreepGroups["harvester_groups"] = [];
             }
@@ -1238,8 +1238,8 @@ export function loop() {
     //TODO: Trigger Inits based off error flags thrown.
     
     if (!TState.Preflight) {
-        TState.Init();
-    }
+        TState.Init();       
+    }    
     
     if (TState.SpawnDelay) {
         if (getTicks() % 20 == 0) {
