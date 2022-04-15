@@ -1233,23 +1233,27 @@ let TState = {
 
 export function loop() {
     //TODO: Trigger Inits based off error flags thrown.
+    
     if (!TState.Preflight) {
         TState.Init();
     }
     
     if (TState.SpawnDelay) {
-        if (getTicks() % 5 == 0) {
+        if (getTicks() % 20 == 0) {
             TState.SpawnDelay = false;
             TState.Structures.Spawn.PollSpawnQueue();
         }
     } else {
         TState.Structures.Spawn.PollSpawnQueue();
     }
+    
+
 }
 
 
-
+//TESTING SNIPPETS
 /*
+    //CreepGroup Tests
     for (let i = 0; i < TState.CreepGroups["harvester_groups"].length; i++) {
         console.log(TState.CreepGroups["harvester_groups"][i]);
     }
@@ -1265,5 +1269,14 @@ export function loop() {
     for (let i = 0; i < TState.CreepGroups["attack_groups"].length; i++) {
         console.log(TState.CreepGroups["attack_groups"][i]);
     }
+
+
+    //Group tier Criteria tests
+    //console.log(TState.GroupTierCriteria[TState.TechLevel]["harvester_groups"]);
+    //console.log(TState.GroupTierCriteria[TState.TechLevel]["build_groups"]);
+    //console.log(TState.GroupTierCriteria[TState.TechLevel]["defense_groups"]);
+    //console.log(TState.GroupTierCriteria[TState.TechLevel]["attack_groups"]);
+
+
 */
         
