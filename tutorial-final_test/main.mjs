@@ -56,19 +56,81 @@ let TState = {
 
     Init:function() {
 
+        TState.InitGameType();
+
+        if (TState.GameType == "Spawn and Swamp") {            
+            if (arenaInfo.level == 1) {
+                TState.InitSASSTD();
+            } else if (arenaInfo.level > 1) {
+                TState.InitSASADV();
+            }
+        } else if (TState.GameType == "Collect and Control") {
+            if (arenaInfo.level == 1) {
+                TState.InitCACSTD();
+            } else if (arenaInfo.level > 1) {
+                TState.InitCACADV();
+            }
+        } else if (TState.GameType == "Capture the Flag") {
+            if (arenaInfo.level == 1) {
+                TState.InitCTFSTD();
+            } else if (arenaInfo.level > 1) {
+                TState.InitCTFADV();
+            }
+        } else {
+            TState.InitTutorial();
+        }
+        TState.Preflight = true;
+    },
+    InitGameType:function () {
+        TState.GameType = arenaInfo.name;
+    },
+    InitCTFSTD:function() {
+        console.log("TBA.");
+    },
+    InitCTFADV:function() {
+        console.log("TBA.");
+    },
+    InitCACSTD:function() {
+        console.log("TBA.");
+    },
+    InitCACADV:function() {
+        console.log("TBA.");
+    },
+    InitSASSTD:function() {
         TState.Structures.Spawn.InitSpawn();
-        TState.Structures.Extensions.InitExtensions();
-        TState.Structures.ScanEnergySupply();
-        TState.Resources.InitRoomSources();
+        TState.Structures.InitEnergySupply();
+        TState.Creeps.InitCreepBodyTierCriteria();
         TState.Groups.InitGroupTierCriteria();
         TState.Groups.InitGroups();
         TState.Groups.InitCreepWrappers();
         TState.Structures.Spawn.InitSpawnQueue();
+    },
+    InitSASADV:function() {
+        TState.Resources.InitRoomSources();
+        TState.Structures.InitEnergySupply();
         TState.Creeps.InitCreepBodyTierCriteria();
+        TState.Creeps.InitSpecialSNSADVCreep();
+        TState.Groups.InitGroupTierCriteria();
+        TState.Groups.InitGroups();
+        TState.Groups.InitCreepWrappers();
+        TState.Structures.Spawn.InitSpawnQueue();
+    },
+    InitTutorial:function() {
+        TState.Resources.InitRoomSources();
+        TState.Structures.Spawn.InitSpawn();
+        TState.Structures.InitEnergySupply();
+        TState.Creeps.InitCreepBodyTierCriteria();
+        TState.Groups.InitGroupTierCriteria();
+        TState.Groups.InitGroups();
+        TState.Groups.InitCreepWrappers();
+        TState.Structures.Spawn.InitSpawnQueue();
+    },
         
+    //TODO: Start development of objective delegation bot.
+    Delegation : {
+        ScanEnemyCreeps:function () {
 
-
-        TState.Preflight = true;
+        },
     },
 
    
