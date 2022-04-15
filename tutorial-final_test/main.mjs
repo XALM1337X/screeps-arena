@@ -825,7 +825,6 @@ let TState = {
 
         ScanGroups:function() {
             
-
             if (!TState.CreepGroups["harvester_groups"]) {
                 TState.CreepGroups["harvester_groups"] = [];
             }
@@ -835,6 +834,7 @@ let TState = {
                         let new_group = {
                             ID: "harvester_groups"+"-"+TState.CreepGroupIdTicker,
                             CreepsWrapper:[],
+                            GroupObjectives:[],
                             
                         }                 
                         TState.CreepGroups["harvester_groups"].push(new_group);
@@ -852,6 +852,7 @@ let TState = {
                     let new_group = {
                         ID: "build_groups"+"-"+TState.CreepGroupIdTicker,
                         CreepsWrapper:[],
+                        GroupObjectives:[],
                         
                     }                 
                     TState.CreepGroups["build_groups"].push(new_group);
@@ -868,7 +869,7 @@ let TState = {
                     let new_group = {
                         ID: "defense_groups"+"-"+TState.CreepGroupIdTicker,
                         CreepsWrapper:[],
-                        
+                        GroupObjectives:[],
                     }                 
                     TState.CreepGroups["defense_groups"].push(new_group);
                     TState.CreepGroupIdTicker++;
@@ -884,7 +885,7 @@ let TState = {
                     let new_group = {
                         ID: "attack_groups"+"-"+TState.CreepGroupIdTicker,
                         CreepsWrapper:[],
-                        
+                        GroupObjectives:[],
                     }                 
                     TState.CreepGroups["attack_groups"].push(new_group);
                     TState.CreepGroupIdTicker++;
@@ -900,7 +901,7 @@ let TState = {
                     let new_group = {
                         ID: "capture_groups"+"-"+TState.CreepGroupIdTicker,
                         CreepsWrapper:[],
-                        
+                        GroupObjectives:[],
                     }                 
                     TState.CreepGroups["capture_groups"].push(new_group);
                     TState.CreepGroupIdTicker++;
