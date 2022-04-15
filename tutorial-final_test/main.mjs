@@ -921,6 +921,7 @@ let TState = {
                             GroupId: TState.CreepGroups["harvester_groups"][i].ID,
                             GroupType: "harvester_groups",
                             CreepType: "harvester",
+                            CurrentTarget : null,
                             CreepObj: null,
                             Objectives: [],
 
@@ -934,6 +935,7 @@ let TState = {
                             GroupId: TState.CreepGroups["harvester_groups"][i].ID,
                             GroupType: "harvester_groups",
                             CreepType: "transporter",
+                            CurrentTarget : null,
                             CreepObj: null,
                             Objectives: [],
                         };
@@ -959,6 +961,7 @@ let TState = {
                             GroupId: TState.CreepGroups["harvester_groups"][i].ID,
                             GroupType: "harvester_groups",
                             CreepType: "harvester",
+                            CurrentTarget : null,
                             CreepObj: null,
                             Objectives: [],
 
@@ -972,6 +975,7 @@ let TState = {
                             GroupId: TState.CreepGroups["harvester_groups"][i].ID,
                             GroupType: "harvester_groups",
                             CreepType: "transporter",
+                            CurrentTarget : null,
                             CreepObj: null,
                             Objectives: [],
                         };
@@ -988,6 +992,7 @@ let TState = {
                             GroupId: TState.CreepGroups["build_groups"][i].ID,
                             GroupType: "build_groups",
                             CreepType: "builder",
+                            CurrentTarget : null,
                             CreepObj: null,
                             Objectives: [],
 
@@ -1006,6 +1011,7 @@ let TState = {
                             GroupId: TState.CreepGroups["build_groups"][i].ID,
                             GroupType: "build_groups",
                             CreepType: "builder",
+                            CurrentTarget : null,
                             CreepObj: null,
                             Objectives: [],
                         };
@@ -1024,6 +1030,7 @@ let TState = {
                             GroupId: TState.CreepGroups["defense_groups"][i].ID,
                             GroupType: "defense_groups",
                             CreepType: "melee",
+                            CurrentTarget : null,
                             CreepObj: null,
                             Objectives: [],
 
@@ -1037,6 +1044,7 @@ let TState = {
                             GroupId: TState.CreepGroups["defense_groups"][i].ID,
                             GroupType: "defense_groups",
                             CreepType: "ranged",
+                            CurrentTarget : null,
                             CreepObj: null,
                             Objectives: [],
 
@@ -1050,6 +1058,7 @@ let TState = {
                             GroupId: TState.CreepGroups["defense_groups"][i].ID,
                             GroupType: "defense_groups",
                             CreepType: "healer",
+                            CurrentTarget : null,
                             CreepObj: null,
                             Objectives: [],
 
@@ -1082,6 +1091,7 @@ let TState = {
                             GroupId: TState.CreepGroups["defense_groups"][i].ID,
                             GroupType: "defense_groups",
                             CreepType: "melee",
+                            CurrentTarget : null,
                             CreepObj: null,
                             Objectives: [],
 
@@ -1094,6 +1104,7 @@ let TState = {
                             GroupId: TState.CreepGroups["defense_groups"][i].ID,
                             GroupType: "defense_groups",
                             CreepType: "ranged",
+                            CurrentTarget : null,
                             CreepObj: null,
                             Objectives: [],
 
@@ -1106,6 +1117,7 @@ let TState = {
                             GroupId: TState.CreepGroups["defense_groups"][i].ID,
                             GroupType: "defense_groups",
                             CreepType: "healer",
+                            CurrentTarget : null,
                             CreepObj: null,
                             Objectives: [],
 
@@ -1124,6 +1136,7 @@ let TState = {
                             GroupId: TState.CreepGroups["attack_groups"][i].ID,
                             GroupType: "attack_groups",
                             CreepType: "melee",
+                            CurrentTarget : null,
                             CreepObj: null,
                             Objectives: [],
 
@@ -1136,6 +1149,7 @@ let TState = {
                             GroupId: TState.CreepGroups["attack_groups"][i].ID,
                             GroupType: "attack_groups",
                             CreepType: "ranged",
+                            CurrentTarget : null,
                             CreepObj: null,
                             Objectives: [],
 
@@ -1148,6 +1162,7 @@ let TState = {
                             GroupId: TState.CreepGroups["attack_groups"][i].ID,
                             GroupType: "attack_groups",
                             CreepType: "healer",
+                            CurrentTarget : null,
                             CreepObj: null,
                             Objectives: [],
 
@@ -1172,34 +1187,36 @@ let TState = {
                     }
 
 
-                    for (let j = melee_total; j < TState.GroupTierCriteria.Tier0.attack_groups.melee_creeps; j++) {
+                    for (let j = melee_total; j < TState.GroupTierCriteria[TState.TechLevel].attack_groups.melee_creeps; j++) {
                         let Wrapper = {
                             ID: TState.CreepIdTicker++,
                             GroupId: TState.CreepGroups["attack_groups"][j].ID,
                             GroupType: "attack_groups",
                             CreepType: "melee",
+                            CurrentTarget : null,
                             CreepObj: null,
                             Objectives: [],
                         };
                         TState.CreepGroups["attack_groups"][j].CreepsWrapper.push(Wrapper);
                     }
-                    for (let j = ranged_total; j < TState.GroupTierCriteria.Tier0.attack_groups.ranged_creeps; j++) {
+                    for (let j = ranged_total; j < TState.GroupTierCriteria[TState.TechLevel].attack_groups.ranged_creeps; j++) {
                         let Wrapper = {
                             ID: TState.CreepIdTicker++,
                             GroupId: TState.CreepGroups["attack_groups"][j].ID,
                             GroupType: "attack_groups",
-                            CreepType: "melee",
+                            CreepType: "ranged",
                             CreepObj: null,
                             Objectives: [],
                         };
                         TState.CreepGroups["attack_groups"][j].CreepsWrapper.push(Wrapper);
                     }
-                    for (let j = healer_total; j < TState.GroupTierCriteria.Tier0.attack_groups.healer_creeps; j++) {
+                    for (let j = healer_total; j < TState.GroupTierCriteria[TState.TechLevel].attack_groups.healer_creeps; j++) {
                         let Wrapper = {
                             ID: TState.CreepIdTicker++,
                             GroupId: TState.CreepGroups["attack_groups"][j].ID,
                             GroupType: "attack_groups",
-                            CreepType: "melee",
+                            CreepType: "healer",
+                            CurrentTarget : null,
                             CreepObj: null,
                             Objectives: [],
                         };
