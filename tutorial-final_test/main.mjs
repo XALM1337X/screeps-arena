@@ -255,7 +255,7 @@ let TState = {
             console.log("obj1: " + obj1);
             console.log("obj2: " + obj2);
             let ydiff = obj2.y - obj1.y;
-            let xdiff = obj2.x = obj1.x;
+            let xdiff = obj2.x - obj1.x;
             return Math.sqrt((ydiff*ydiff)+(xdiff*xdiff))
         }
 
