@@ -144,7 +144,7 @@ let TState = {
                     for(let j = 0; j < TState.CreepGroups[key][i].CreepsWrapper.length; j++) {
                         if (TState.CreepGroups[key][i].CreepsWrapper[j].CreepType == "harvester" && TState.CreepGroups[key][i].CreepsWrapper[j].CreepObj) {
                             if(TState.CreepGroups[key][i].CreepsWrapper[j].CreepObj.id) {
-                                TState.RunTime.runHarvester(TState.CreepGroups[key][i].CreepsWrapper[j])
+                                TState.RunTime.RunHarvester(TState.CreepGroups[key][i].CreepsWrapper[j])
                                 
                             }
                         } else if (TState.CreepGroups[key][i].CreepsWrapper[j].CreepType == "transporter" && TState.CreepGroups[key][i].CreepsWrapper[j].CreepObj) {
@@ -173,7 +173,7 @@ let TState = {
             }
         },
 
-        runHarvester:function(CreepWrapper) {
+        RunHarvester:function(CreepWrapper) {
             /*
             CREEPWRAPPER
             {
@@ -182,6 +182,8 @@ let TState = {
                 GroupType: 'harvester_groups',
                 CreepType: 'harvester',
                 CurrentTarget: null,
+                TargetType : "",
+                CurrentStatus: "",
                 CreepObj: Creep {
                   id: 17,
                   x: 51,
