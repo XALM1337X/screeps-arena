@@ -1,6 +1,6 @@
 import { getObjectsByPrototype } from '/game/utils';
 import { Creep, StructureSpawn, Source, StructureExtension } from '/game/prototypes';
-import { ERR_NOT_IN_RANGE, MOVE, WORK, CARRY, ATTACK, RANGED_ATTACK, HEAL, TOUGH, RESOURCE_ENERGY } from '/game/constants';
+import { OK, ERR_NOT_IN_RANGE, MOVE, WORK, CARRY, ATTACK, RANGED_ATTACK, HEAL, TOUGH, RESOURCE_ENERGY, TOP, TOP_RIGHT, BOTTOM, BOTTOM_RIGHT, RIGHT, TOP_LEFT, BOTTOM_LEFT, LEFT} from '/game/constants';
 import { utils, arenaInfo } from '/game';
 import { getTicks } from '/game/utils';
 
@@ -24,6 +24,7 @@ let TState = {
     WorldResources: [],
     ModuleReinitList: [],
     Extensions: [],
+    Containers: [],
 
     SpawnQueue: [],
     TasksQueue: [],
@@ -55,6 +56,8 @@ let TState = {
     EnemyTowers:[],
     EnemySpawns:[],
     ExitStatus: 0,
+
+    TestFlag : false,
 
     Init:function() {
 
@@ -101,6 +104,7 @@ let TState = {
     InitSASSTD:function() {
         TState.Structures.Spawn.InitSpawn();
         TState.Structures.InitEnergySupply();
+        TState.Structures.Containers.InitContainers();
         TState.Creeps.InitCreepBodyTierCriteria();
         TState.Groups.InitGroupTierCriteria();
         TState.Groups.InitGroups();
@@ -126,13 +130,133 @@ let TState = {
         TState.Groups.InitGroups();
         TState.Groups.InitCreepWrappers();
         TState.Structures.Spawn.InitSpawnQueue();
+        TState.RunTime.ScanEnemyCreeps();
     },
 
     //TODO: Start development of objective delegation bot.
-    Delegation : {
+    RunTime : {
         ScanEnemyCreeps:function () {
-
+            TState.EnemyCreeps = getObjectsByPrototype(Creep).find(i => !i.my);
         },
+        RunCreepGroupsTutorial:function () {
+            for (let key in TState.CreepGroups) {
+                for(let i = 0; i < TState.CreepGroups[key].length; i++) {
+                    for(let j = 0; j < TState.CreepGroups[key][i].CreepsWrapper.length; j++) {
+                        if (TState.CreepGroups[key][i].CreepsWrapper[j].CreepType == "harvester" && TState.CreepGroups[key][i].CreepsWrapper[j].CreepObj) {
+                            if(TState.CreepGroups[key][i].CreepsWrapper[j].CreepObj.id) {
+                                TState.RunTime.runHarvester(TState.CreepGroups[key][i].CreepsWrapper[j])
+                                
+                            }
+                        } else if (TState.CreepGroups[key][i].CreepsWrapper[j].CreepType == "transporter" && TState.CreepGroups[key][i].CreepsWrapper[j].CreepObj) {
+                            if(TState.CreepGroups[key][i].CreepsWrapper[j].CreepObj.id) {
+                                console.log(TState.CreepGroups[key][i].CreepsWrapper[j]);
+                            }
+                        } else if (TState.CreepGroups[key][i].CreepsWrapper[j].CreepType == "builder" && TState.CreepGroups[key][i].CreepsWrapper[j].CreepObj) {
+                            if(TState.CreepGroups[key][i].CreepsWrapper[j].CreepObj.id) {
+                                console.log(TState.CreepGroups[key][i].CreepsWrapper[j]);
+                            }
+                        } else if (TState.CreepGroups[key][i].CreepsWrapper[j].CreepType == "melee" && TState.CreepGroups[key][i].CreepsWrapper[j].CreepObj) {
+                            if(TState.CreepGroups[key][i].CreepsWrapper[j].CreepObj.id) {
+                                console.log(TState.CreepGroups[key][i].CreepsWrapper[j]);
+                            }
+                        } else if (TState.CreepGroups[key][i].CreepsWrapper[j].CreepType == "ranged" && TState.CreepGroups[key][i].CreepsWrapper[j].CreepObj) {
+                            if(TState.CreepGroups[key][i].CreepsWrapper[j].CreepObj.id) {
+                                console.log(TState.CreepGroups[key][i].CreepsWrapper[j]);
+                            }
+                        } else if (TState.CreepGroups[key][i].CreepsWrapper[j].CreepType == "healer" && TState.CreepGroups[key][i].CreepsWrapper[j].CreepObj) {
+                            if(TState.CreepGroups[key][i].CreepsWrapper[j].CreepObj.id) {
+                                console.log(TState.CreepGroups[key][i].CreepsWrapper[j]);
+                            }
+                        }
+                    }
+                }
+            }
+        },
+
+        runHarvester:function(CreepWrapper) {
+            /*
+            CREEPWRAPPER
+            {
+                ID: 0,
+                GroupId: 'harvester_groups-0',
+                GroupType: 'harvester_groups',
+                CreepType: 'harvester',
+                CurrentTarget: null,
+                CreepObj: Creep {
+                  id: 17,
+                  x: 51,
+                  y: 44,
+                  ticksToDecay: undefined,
+                  hits: 800,
+                  hitsMax: 800,
+                  my: true,
+                  fatigue: 0,
+                  body: [
+                    { type: 'move', hits: 100 },
+                    { type: 'move', hits: 100 },
+                    { type: 'work', hits: 100 },
+                    { type: 'work', hits: 100 },
+                    { type: 'carry', hits: 100 },
+                    { type: 'carry', hits: 100 },
+                    { type: 'carry', hits: 100 },
+                    { type: 'carry', hits: 100 }
+                  ],
+                  store: Store {}
+                },
+                Objectives: []
+              }
+              */
+            if (!CreepWrapper.CurrentTarget) {
+                console.log("NOTARG");
+                if (CreepWrapper.CreepObj.store[RESOURCE_ENERGY] < CreepWrapper.CreepObj.store.getCapacity()) {
+                    console.log("NOTARG-2");
+                    var closest = undefined;
+                    for (let i = 0; i < TState.RoomSources.length; i++) {
+                        if (!closest) {
+                            console.log("NOTARG-3");
+                            closest = TState.RoomSources[i];
+                            continue;
+                        }
+                        if(TState.RunTime.getDistance(closest, TState.RoomSources[i]) < closest) {
+                            closest = TState.RoomSources[i];
+                        }
+                        
+                    }
+
+                    CreepWrapper.CurrentTarget = closest;
+                    console.log(CreepWrapper.CurrentTarget);
+                }
+            } else {
+                console.log("TARG");
+                if (CreepWrapper.CreepObj.store[RESOURCE_ENERGY] < CreepWrapper.CreepObj.store.getCapacity()) {
+                    console.log("TARG-2")
+                    if (CreepWrapper.CreepObj.harvest(CreepWrapper.CurrentTarget) != OK) {
+                        console.log("TARG-3")
+                        CreepWrapper.CreepObj.moveTo(CreepWrapper.CurrentTarget);
+                        if (CreepWrapper.CurrentTarget == Source) {
+                            console.log(CreepWrapper.CurrentTarget);
+                        }
+                    }
+                } else {
+                    console.log(CreepWrapper);
+                }
+            }
+
+
+            
+            //CreepWrapper.CreepObj.move(TOP);
+            //console.log(CreepWrapper);
+            //console.log(CreepWrapper.CreepObj)
+        },
+
+        getDistance:function(obj1, obj2) {
+            console.log("obj1: " + obj1);
+            console.log("obj2: " + obj2);
+            let ydiff = obj2.y - obj1.y;
+            let xdiff = obj2.x = obj1.x;
+            return Math.sqrt((ydiff*ydiff)+(xdiff*xdiff))
+        }
+
     },
 
 
@@ -306,6 +430,12 @@ let TState = {
                 TState.Extensions = utils.getObjectsByPrototype(StructureExtension).find(i => i.my);
             },
         },
+
+        Containers: {
+            InitContainers:function() {
+                TState.Containers = utils.getObjectsByPrototype(StructureContainer);
+            }
+        }
     },
     
     Creeps: {
@@ -926,6 +1056,8 @@ let TState = {
                             GroupType: "harvester_groups",
                             CreepType: "harvester",
                             CurrentTarget : null,
+                            TargetType : "",
+                            CurrentStatus: "",
                             CreepObj: null,
                             Objectives: [],
 
@@ -940,6 +1072,8 @@ let TState = {
                             GroupType: "harvester_groups",
                             CreepType: "transporter",
                             CurrentTarget : null,
+                            TargetType : "",
+                            CurrentStatus: "",
                             CreepObj: null,
                             Objectives: [],
                         };
@@ -966,6 +1100,8 @@ let TState = {
                             GroupType: "harvester_groups",
                             CreepType: "harvester",
                             CurrentTarget : null,
+                            TargetType : "",
+                            CurrentStatus: "",
                             CreepObj: null,
                             Objectives: [],
 
@@ -980,6 +1116,8 @@ let TState = {
                             GroupType: "harvester_groups",
                             CreepType: "transporter",
                             CurrentTarget : null,
+                            TargetType : "",
+                            CurrentStatus: "",
                             CreepObj: null,
                             Objectives: [],
                         };
@@ -997,6 +1135,8 @@ let TState = {
                             GroupType: "build_groups",
                             CreepType: "builder",
                             CurrentTarget : null,
+                            TargetType : "",
+                            CurrentStatus: "",
                             CreepObj: null,
                             Objectives: [],
 
@@ -1016,6 +1156,8 @@ let TState = {
                             GroupType: "build_groups",
                             CreepType: "builder",
                             CurrentTarget : null,
+                            TargetType : "",
+                            CurrentStatus: "",
                             CreepObj: null,
                             Objectives: [],
                         };
@@ -1035,6 +1177,8 @@ let TState = {
                             GroupType: "defense_groups",
                             CreepType: "melee",
                             CurrentTarget : null,
+                            TargetType : "",
+                            CurrentStatus: "",
                             CreepObj: null,
                             Objectives: [],
 
@@ -1049,6 +1193,8 @@ let TState = {
                             GroupType: "defense_groups",
                             CreepType: "ranged",
                             CurrentTarget : null,
+                            TargetType : "",
+                            CurrentStatus: "",
                             CreepObj: null,
                             Objectives: [],
 
@@ -1063,6 +1209,8 @@ let TState = {
                             GroupType: "defense_groups",
                             CreepType: "healer",
                             CurrentTarget : null,
+                            TargetType : "",
+                            CurrentStatus: "",
                             CreepObj: null,
                             Objectives: [],
 
@@ -1096,6 +1244,8 @@ let TState = {
                             GroupType: "defense_groups",
                             CreepType: "melee",
                             CurrentTarget : null,
+                            TargetType : "",
+                            CurrentStatus: "",
                             CreepObj: null,
                             Objectives: [],
 
@@ -1109,6 +1259,8 @@ let TState = {
                             GroupType: "defense_groups",
                             CreepType: "ranged",
                             CurrentTarget : null,
+                            TargetType : "",
+                            CurrentStatus: "",
                             CreepObj: null,
                             Objectives: [],
 
@@ -1122,6 +1274,8 @@ let TState = {
                             GroupType: "defense_groups",
                             CreepType: "healer",
                             CurrentTarget : null,
+                            TargetType : "",
+                            CurrentStatus: "",
                             CreepObj: null,
                             Objectives: [],
 
@@ -1133,7 +1287,6 @@ let TState = {
 
             for (let i =0; i < TState.CreepGroups["attack_groups"].length; i++) {
                 if (TState.CreepGroups["attack_groups"][i].CreepsWrapper.length == 0) {
-
                     for (let j = 0; j < TState.GroupTierCriteria[TState.TechLevel].attack_groups.melee_creeps; j++) {
                         let Wrapper = {
                             ID: TState.CreepIdTicker++,
@@ -1141,6 +1294,8 @@ let TState = {
                             GroupType: "attack_groups",
                             CreepType: "melee",
                             CurrentTarget : null,
+                            TargetType : "",
+                            CurrentStatus: "",
                             CreepObj: null,
                             Objectives: [],
 
@@ -1154,6 +1309,8 @@ let TState = {
                             GroupType: "attack_groups",
                             CreepType: "ranged",
                             CurrentTarget : null,
+                            TargetType : "",
+                            CurrentStatus: "",
                             CreepObj: null,
                             Objectives: [],
 
@@ -1167,6 +1324,8 @@ let TState = {
                             GroupType: "attack_groups",
                             CreepType: "healer",
                             CurrentTarget : null,
+                            TargetType : "",
+                            CurrentStatus: "",
                             CreepObj: null,
                             Objectives: [],
 
@@ -1198,6 +1357,8 @@ let TState = {
                             GroupType: "attack_groups",
                             CreepType: "melee",
                             CurrentTarget : null,
+                            TargetType : "",
+                            CurrentStatus: "",
                             CreepObj: null,
                             Objectives: [],
                         };
@@ -1209,6 +1370,9 @@ let TState = {
                             GroupId: TState.CreepGroups["attack_groups"][j].ID,
                             GroupType: "attack_groups",
                             CreepType: "ranged",
+                            CurrentTarget : null,
+                            TargetType : "",
+                            CurrentStatus: "",
                             CreepObj: null,
                             Objectives: [],
                         };
@@ -1221,6 +1385,8 @@ let TState = {
                             GroupType: "attack_groups",
                             CreepType: "healer",
                             CurrentTarget : null,
+                            TargetType : "",
+                            CurrentStatus: "",
                             CreepObj: null,
                             Objectives: [],
                         };
@@ -1236,7 +1402,7 @@ let TState = {
 
 export function loop() {
     //TODO: Trigger Inits based off error flags thrown.
-    
+    console.log(Math.sqrt(16));
     if (!TState.Preflight) {
         TState.Init();       
     }    
@@ -1248,6 +1414,33 @@ export function loop() {
         }
     } else {
         TState.Structures.Spawn.PollSpawnQueue();
+    }
+    
+
+
+    if (TState.GameType == "Spawn and Swamp") {            
+        if (arenaInfo.level == 1) {
+            
+        } else if (arenaInfo.level > 1) {
+            
+        }
+    } else if (TState.GameType == "Collect and Control") {
+        if (arenaInfo.level == 1) {
+            
+        } else if (arenaInfo.level > 1) {
+            
+        }
+    } else if (TState.GameType == "Capture the Flag") {
+        if (arenaInfo.level == 1) {
+            
+        } else if (arenaInfo.level > 1) {
+            
+        }
+    } else {
+        if (!TState.TestFlag) {
+            TState.RunTime.RunCreepGroupsTutorial();
+            //TState.TestFlag = true;
+        }
     }
     
 
