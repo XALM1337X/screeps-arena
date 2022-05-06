@@ -5,7 +5,7 @@ import { utils, arenaInfo } from '/game';
 import { getTicks } from '/game/utils';
 
 let TState = {
-
+    IsTutorial: false,
     SpecialBitch: null,
 
     SpawnDelay: false,
@@ -122,6 +122,7 @@ let TState = {
         TState.Structures.Spawn.InitSpawnQueue();
     },
     InitTutorial:function() {
+        TState.IsTutorial = true
         TState.Resources.InitRoomSources();
         TState.Structures.Spawn.InitSpawn();
         TState.Structures.InitEnergySupply();
@@ -133,7 +134,7 @@ let TState = {
         TState.RunTime.ScanEnemyCreeps();
     },
 
-    //TODO: Start development of objective delegation bot.
+
     RunTime : {
         ScanEnemyCreeps:function () {
             TState.EnemyCreeps = getObjectsByPrototype(Creep).find(i => !i.my);
@@ -157,7 +158,7 @@ let TState = {
                             }
                         } else if (TState.CreepGroups[key][i].CreepsWrapper[j].CreepType == "melee" && TState.CreepGroups[key][i].CreepsWrapper[j].CreepObj) {
                             if(TState.CreepGroups[key][i].CreepsWrapper[j].CreepObj.id) {
-                                console.log(TState.CreepGroups[key][i].CreepsWrapper[j]);
+                                TState.RunTime.RunAttacker(TState.CreepGroups[key][i].CreepsWrapper[j])
                             }
                         } else if (TState.CreepGroups[key][i].CreepsWrapper[j].CreepType == "ranged" && TState.CreepGroups[key][i].CreepsWrapper[j].CreepObj) {
                             if(TState.CreepGroups[key][i].CreepsWrapper[j].CreepObj.id) {
@@ -165,7 +166,7 @@ let TState = {
                             }
                         } else if (TState.CreepGroups[key][i].CreepsWrapper[j].CreepType == "healer" && TState.CreepGroups[key][i].CreepsWrapper[j].CreepObj) {
                             if(TState.CreepGroups[key][i].CreepsWrapper[j].CreepObj.id) {
-                                console.log(TState.CreepGroups[key][i].CreepsWrapper[j]);
+                                TState.RunTime.RunHealer(TState.CreepGroups[key][i].CreepsWrapper[j])
                             }
                         }
                     }
@@ -173,7 +174,6 @@ let TState = {
             }
         },
 
-        RunHarvester:function(CreepWrapper) {
             /*
             CREEPWRAPPER
             {
@@ -208,52 +208,94 @@ let TState = {
                 Objectives: []
               }
               */
-            if (!CreepWrapper.CurrentTarget) {
-                console.log("NOTARG");
-                if (CreepWrapper.CreepObj.store[RESOURCE_ENERGY] < CreepWrapper.CreepObj.store.getCapacity()) {
-                    console.log("NOTARG-2");
-                    var closest = undefined;
-                    for (let i = 0; i < TState.RoomSources.length; i++) {
-                        if (!closest) {
-                            console.log("NOTARG-3");
-                            closest = TState.RoomSources[i];
-                            continue;
-                        }
-                        if(TState.RunTime.getDistance(closest, TState.RoomSources[i]) < closest) {
-                            closest = TState.RoomSources[i];
-                        }
-                        
-                    }
 
-                    CreepWrapper.CurrentTarget = closest;
-                    console.log(CreepWrapper.CurrentTarget);
+        RunAttacker:function(CreepWrapper) {
+            
+        },
+
+        RunHealer:function(CreepWrapper) {
+            //console.log(CreepWrapper);
+        },
+
+        RunHarvester:function(CreepWrapper) {
+
+            if (!CreepWrapper.CurrentTarget) {
+                if (CreepWrapper.CreepObj.store[RESOURCE_ENERGY] <= 0) {
+                    CreepWrapper.CurrentStatus = "source-search";
+                } else if (CreepWrapper.CreepObj.store[RESOURCE_ENERGY] == CreepWrapper.CreepObj.store.getCapacity(RESOURCE_ENERGY)) {
+                    CreepWrapper.CurrentStatus = "target-search";
+                } else if (CreepWrapper.CreepObj.store[RESOURCE_ENERGY] > 0) {
+                    CreepWrapper.CurrentStatus = "source-search";
+                }
+                switch (CreepWrapper.CurrentStatus) {
+                    case "source-search":
+                        var closest = undefined;
+                        for (let i = 0; i < TState.RoomSources.length; i++) {
+                            if (!closest) {
+                                closest = TState.RoomSources[i];
+                                continue;
+                            }
+                            if (TState.RunTime.getDistance(CreepWrapper.CreepObj, TState.RoomSources[i]) < closest) {
+                                closest = TState.RoomSources[i];
+                            }
+                        }
+                        CreepWrapper.CurrentTarget = closest;
+                        CreepWrapper.TargetType = "source";
+                        CreepWrapper.CurrentStatus = "harvest";
+                    break;
+
+                    case "target-search":
+                        var closest = undefined;
+                        for (let i = 0; i < TState.Spawns.length; i++) {
+                            if (TState.Spawns[i].store[RESOURCE_ENERGY] < TState.Spawns[i].store.getCapacity(RESOURCE_ENERGY)) {
+                                CreepWrapper.TargetType = "spawn";
+                                CreepWrapper.CurrentTarget = TState.Spawns[i];
+                                CreepWrapper.CurrentStatus = "deposit";
+                                break;
+                            }
+                        }
+                    break;
                 }
             } else {
-                console.log("TARG");
-                if (CreepWrapper.CreepObj.store[RESOURCE_ENERGY] < CreepWrapper.CreepObj.store.getCapacity()) {
-                    console.log("TARG-2")
-                    if (CreepWrapper.CreepObj.harvest(CreepWrapper.CurrentTarget) != OK) {
-                        console.log("TARG-3")
-                        CreepWrapper.CreepObj.moveTo(CreepWrapper.CurrentTarget);
-                        if (CreepWrapper.CurrentTarget == Source) {
-                            console.log(CreepWrapper.CurrentTarget);
+                switch(CreepWrapper.CurrentStatus) {
+                    case "harvest":
+                        if (CreepWrapper.CreepObj.harvest(CreepWrapper.CurrentTarget) != OK) {
+                            CreepWrapper.CreepObj.moveTo(CreepWrapper.CurrentTarget);
                         }
-                    }
-                } else {
-                    console.log(CreepWrapper);
+                        if (CreepWrapper.CreepObj.store[RESOURCE_ENERGY] == CreepWrapper.CreepObj.store.getCapacity(RESOURCE_ENERGY)) {
+                            CreepWrapper.CurrentTarget = undefined;
+                            CreepWrapper.TargetType = ""
+                            CreepWrapper.CurrentStatus = undefined;
+                        }
+                    break;
+
+                    case "deposit":
+                        if (CreepWrapper.CreepObj.transfer(CreepWrapper.CurrentTarget, RESOURCE_ENERGY) != OK) {
+                            CreepWrapper.CreepObj.moveTo(CreepWrapper.CurrentTarget);
+                        }
+                        if (CreepWrapper.CreepObj.store[RESOURCE_ENERGY] > 0 && CreepWrapper.CurrentTarget.store[RESOURCE_ENERGY] == CreepWrapper.CurrentTarget.store.getCapacity(RESOURCE_ENERGY)) {
+                            CreepWrapper.CurrentTarget = undefined;
+                            CreepWrapper.TargetType = ""
+                            CreepWrapper.CurrentStatus = undefined;
+                        }
+
+
+                        if (CreepWrapper.CreepObj.store[RESOURCE_ENERGY] == 0) {
+                            CreepWrapper.CurrentTarget = undefined;
+                            CreepWrapper.TargetType = ""
+                            CreepWrapper.CurrentStatus = undefined;
+                        }
+                        
+                    break;
                 }
             }
+        },
 
+        perimiterCheck:function() {
 
-            
-            //CreepWrapper.CreepObj.move(TOP);
-            //console.log(CreepWrapper);
-            //console.log(CreepWrapper.CreepObj)
         },
 
         getDistance:function(obj1, obj2) {
-            console.log("obj1: " + obj1);
-            console.log("obj2: " + obj2);
             let ydiff = obj2.y - obj1.y;
             let xdiff = obj2.x - obj1.x;
             return Math.sqrt((ydiff*ydiff)+(xdiff*xdiff))
@@ -347,7 +389,6 @@ let TState = {
                     for(let i = 0; i < TState.CreepBodyTierCriteria[TState.TechLevel][TState.SpawnQueue[0].CreepType].tough; i++) {
                         body.push(TOUGH);
                     }
-                    let group = "";
                     //CreepGroupKeys: ["harvester_groups", "defense_groups", "attack_groups", "build_groups","capture_groups"],
 
                     for (let i = 0; i < TState.CreepGroups[TState.SpawnQueue[0].GroupType].length; i++) {
@@ -362,7 +403,7 @@ let TState = {
                                                 return;
                                             } 
                                             if (creep_spawn.error) {
-                                                console.log(creep_spawn.error);
+                                                //console.log(creep_spawn.error);
                                                 TState.SpawnDelay = true;
                                                 return;
                                             }
@@ -379,7 +420,7 @@ let TState = {
                     }
 
                 } else {                    
-                    console.log("Not enough energy");
+                    //console.log("Not enough energy");
                     TState.SpawnDelay = true;
                     
                 }
@@ -788,166 +829,201 @@ let TState = {
         InitGroupTierCriteria:function () {
             //CreepGroupKey: ["harvester_groups", "defense_groups", "attack_groups", "build_groups","capture_groups"]
 
-            for (let i = 0; i < TState.TechLevelKeys.length; i++) {                
-                if (!TState.GroupTierCriteria[TState.TechLevelKeys[i]]) {
-                    TState.GroupTierCriteria[TState.TechLevelKeys[i]] = [];
+            if (TState.IsTutorial) {
+                if (!TState.GroupTierCriteria["TIER0"]) {
+                    TState.GroupTierCriteria["TIER0"] = [];
                 }
-                switch (TState.TechLevelKeys[i]) {
-                    case "TIER0":
-                        TState.GroupTierCriteria[TState.TechLevelKeys[i]]["harvester_groups"] = {
-                            total_groups: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                            total_creeps: ("Spawn and Swamp" == TState.GameType) ? 2 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 2,
-                            harvester_creeps: ("Spawn and Swamp" == TState.GameType) ? 0 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                            transport_creeps: ("Spawn and Swamp" == TState.GameType) ? 2 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                        };
-                        TState.GroupTierCriteria[TState.TechLevelKeys[i]]["build_groups"] = {
-                            total_groups: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                            total_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                            builder_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                        };
-                        TState.GroupTierCriteria[TState.TechLevelKeys[i]]["defense_groups"] = {
-                            total_groups: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                            total_creeps: ("Spawn and Swamp" == TState.GameType) ? 3 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 3,
-                            melee_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                            ranged_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                            healer_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                        };
-                        TState.GroupTierCriteria[TState.TechLevelKeys[i]]["attack_groups"] = {
-                            total_groups: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 0,
-                            total_creeps: ("Spawn and Swamp" == TState.GameType) ? 4 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 0,
-                            melee_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 0,
-                            ranged_creeps: ("Spawn and Swamp" == TState.GameType) ? 2 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 0,
-                            healer_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 0,
-                        };
-                        TState.GroupTierCriteria[TState.TechLevelKeys[i]]["capture_groups"] = {
-                            total_groups: ("Spawn and Swamp" == TState.GameType) ? 0 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 0,
-                        };
-
-
-                    break;
-                    case "TIER1":
-                        TState.GroupTierCriteria[TState.TechLevelKeys[i]]["harvester_groups"] = {
-                            total_groups: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                            total_creeps: ("Spawn and Swamp" == TState.GameType) ? 4 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 2,
-                            harvester_creeps: ("Spawn and Swamp" == TState.GameType) ? 0 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                            transport_creeps: ("Spawn and Swamp" == TState.GameType) ? 2 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                        };
-                        TState.GroupTierCriteria[TState.TechLevelKeys[i]]["build_groups"] = {
-                            total_groups: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                            total_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                            builder_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                        };
-                        TState.GroupTierCriteria[TState.TechLevelKeys[i]]["defense_groups"] = {
-                            total_groups: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                            total_creeps: ("Spawn and Swamp" == TState.GameType) ? 3 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 3,
-                            melee_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                            ranged_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                            healer_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                        };
-                        TState.GroupTierCriteria[TState.TechLevelKeys[i]]["attack_groups"] = {
-                            total_groups: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 0,
-                            total_creeps: ("Spawn and Swamp" == TState.GameType) ? 4 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 0,
-                            melee_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 0,
-                            ranged_creeps: ("Spawn and Swamp" == TState.GameType) ? 2 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 0,
-                            healer_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 0,
-                        };
-                        TState.GroupTierCriteria[TState.TechLevelKeys[i]]["capture_groups"] = {
-                            total_groups: ("Spawn and Swamp" == TState.GameType) ? 0 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 0,
-                        };
-                    break;
-                    case "TIER2":
-                        TState.GroupTierCriteria[TState.TechLevelKeys[i]]["harvester_groups"] = {
-                            total_groups: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                            total_creeps: ("Spawn and Swamp" == TState.GameType) ? 4 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 2,
-                            harvester_creeps: ("Spawn and Swamp" == TState.GameType) ? 0 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                            transport_creeps: ("Spawn and Swamp" == TState.GameType) ? 2 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                        };
-                        TState.GroupTierCriteria[TState.TechLevelKeys[i]]["build_groups"] = {
-                            total_groups: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                            total_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                            builder_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                        };
-                        TState.GroupTierCriteria[TState.TechLevelKeys[i]]["defense_groups"] = {
-                            total_groups: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                            total_creeps: ("Spawn and Swamp" == TState.GameType) ? 3 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 3,
-                            melee_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                            ranged_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                            healer_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                        };
-                        TState.GroupTierCriteria[TState.TechLevelKeys[i]]["attack_groups"] = {
-                            total_groups: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 0,
-                            total_creeps: ("Spawn and Swamp" == TState.GameType) ? 4 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 0,
-                            melee_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 0,
-                            ranged_creeps: ("Spawn and Swamp" == TState.GameType) ? 2 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 0,
-                            healer_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 0,
-                        };
-                        TState.GroupTierCriteria[TState.TechLevelKeys[i]]["capture_groups"] = {
-                            total_groups: ("Spawn and Swamp" == TState.GameType) ? 0 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 0,
-                        };
-                    break;
-                    case "TIER3":
-                        TState.GroupTierCriteria[TState.TechLevelKeys[i]]["harvester_groups"] = {
-                            total_groups: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                            total_creeps: ("Spawn and Swamp" == TState.GameType) ? 4 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 2,
-                            harvester_creeps: ("Spawn and Swamp" == TState.GameType) ? 0 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                            transport_creeps: ("Spawn and Swamp" == TState.GameType) ? 2 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                        };
-                        TState.GroupTierCriteria[TState.TechLevelKeys[i]]["build_groups"] = {
-                            total_groups: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                            total_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                            builder_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                        };
-                        TState.GroupTierCriteria[TState.TechLevelKeys[i]]["defense_groups"] = {
-                            total_groups: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                            total_creeps: ("Spawn and Swamp" == TState.GameType) ? 3 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 3,
-                            melee_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                            ranged_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                            healer_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                        };
-                        TState.GroupTierCriteria[TState.TechLevelKeys[i]]["attack_groups"] = {
-                            total_groups: ("Spawn and Swamp" == TState.GameType) ? 5 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 0,
-                            total_creeps: ("Spawn and Swamp" == TState.GameType) ? 4 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 0,
-                            melee_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 0,
-                            ranged_creeps: ("Spawn and Swamp" == TState.GameType) ? 2 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 0,
-                            healer_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 0,
-                        };
-                        TState.GroupTierCriteria[TState.TechLevelKeys[i]]["capture_groups"] = {
-                            total_groups: ("Spawn and Swamp" == TState.GameType) ? 0 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 0,
-                        };
-                    break;
-                    case "TIER4":
-                        TState.GroupTierCriteria[TState.TechLevelKeys[i]]["harvester_groups"] = {
-                            total_groups: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                            total_creeps: ("Spawn and Swamp" == TState.GameType) ? 4 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 2,
-                            harvester_creeps: ("Spawn and Swamp" == TState.GameType) ? 0 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                            transport_creeps: ("Spawn and Swamp" == TState.GameType) ? 2 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                        };
-                        TState.GroupTierCriteria[TState.TechLevelKeys[i]]["build_groups"] = {
-                            total_groups: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                            total_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                            builder_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                        };
-                        TState.GroupTierCriteria[TState.TechLevelKeys[i]]["defense_groups"] = {
-                            total_groups: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                            total_creeps: ("Spawn and Swamp" == TState.GameType) ? 3 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 3,
-                            melee_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                            ranged_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                            healer_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                        };
-                        TState.GroupTierCriteria[TState.TechLevelKeys[i]]["attack_groups"] = {
-                            total_groups: ("Spawn and Swamp" == TState.GameType) ? 10 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 0,
-                            total_creeps: ("Spawn and Swamp" == TState.GameType) ? 4 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 0,
-                            melee_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 0,
-                            ranged_creeps: ("Spawn and Swamp" == TState.GameType) ? 2 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 0,
-                            healer_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 0,
-                        };
-                        TState.GroupTierCriteria[TState.TechLevelKeys[i]]["capture_groups"] = {
-                            total_groups: ("Spawn and Swamp" == TState.GameType) ? 0 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 0,
-                        };
-                    break;
+                TState.GroupTierCriteria["TIER0"]["harvester_groups"] = {
+                    total_groups: 1,
+                    total_creeps: 0,
+                    harvester_creeps: 1,
+                    transport_creeps: 0,
+                };
+                TState.GroupTierCriteria["TIER0"]["build_groups"] = {
+                    total_groups: 0,
+                    total_creeps: 0,
+                    builder_creeps: 0,
+                };
+                TState.GroupTierCriteria["TIER0"]["defense_groups"] = {
+                    total_groups: 1,
+                    total_creeps: 2,
+                    melee_creeps: 1,
+                    ranged_creeps: 0,
+                    healer_creeps: 1,
+                };
+                TState.GroupTierCriteria["TIER0"]["attack_groups"] = {
+                    total_groups: 0,
+                    total_creeps: 0,
+                    melee_creeps: 0,
+                    ranged_creeps: 0,
+                    healer_creeps: 0,
+                };
+                TState.GroupTierCriteria["TIER0"]["capture_groups"] = {
+                    total_groups: 0,
+                };
+            } else {
+                for (let i = 0; i < TState.TechLevelKeys.length; i++) {                
+                    if (!TState.GroupTierCriteria[TState.TechLevelKeys[i]]) {
+                        TState.GroupTierCriteria[TState.TechLevelKeys[i]] = [];
+                    }
+                    switch (TState.TechLevelKeys[i]) {
+                        case "TIER0":
+                            TState.GroupTierCriteria[TState.TechLevelKeys[i]]["harvester_groups"] = {
+                                total_groups: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
+                                total_creeps: ("Spawn and Swamp" == TState.GameType) ? 2 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 2,
+                                harvester_creeps: ("Spawn and Swamp" == TState.GameType) ? 0 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
+                                transport_creeps: ("Spawn and Swamp" == TState.GameType) ? 2 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
+                            };
+                            TState.GroupTierCriteria[TState.TechLevelKeys[i]]["build_groups"] = {
+                                total_groups: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
+                                total_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
+                                builder_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
+                            };
+                            TState.GroupTierCriteria[TState.TechLevelKeys[i]]["defense_groups"] = {
+                                total_groups: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
+                                total_creeps: ("Spawn and Swamp" == TState.GameType) ? 3 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 3,
+                                melee_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
+                                ranged_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
+                                healer_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
+                            };
+                            TState.GroupTierCriteria[TState.TechLevelKeys[i]]["attack_groups"] = {
+                                total_groups: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 0,
+                                total_creeps: ("Spawn and Swamp" == TState.GameType) ? 4 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 0,
+                                melee_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 0,
+                                ranged_creeps: ("Spawn and Swamp" == TState.GameType) ? 2 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 0,
+                                healer_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 0,
+                            };
+                            TState.GroupTierCriteria[TState.TechLevelKeys[i]]["capture_groups"] = {
+                                total_groups: ("Spawn and Swamp" == TState.GameType) ? 0 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 0,
+                            };
+    
+    
+                        break;
+                        case "TIER1":
+                            TState.GroupTierCriteria[TState.TechLevelKeys[i]]["harvester_groups"] = {
+                                total_groups: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
+                                total_creeps: ("Spawn and Swamp" == TState.GameType) ? 4 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 2,
+                                harvester_creeps: ("Spawn and Swamp" == TState.GameType) ? 0 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
+                                transport_creeps: ("Spawn and Swamp" == TState.GameType) ? 2 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
+                            };
+                            TState.GroupTierCriteria[TState.TechLevelKeys[i]]["build_groups"] = {
+                                total_groups: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
+                                total_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
+                                builder_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
+                            };
+                            TState.GroupTierCriteria[TState.TechLevelKeys[i]]["defense_groups"] = {
+                                total_groups: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
+                                total_creeps: ("Spawn and Swamp" == TState.GameType) ? 3 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 3,
+                                melee_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
+                                ranged_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
+                                healer_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
+                            };
+                            TState.GroupTierCriteria[TState.TechLevelKeys[i]]["attack_groups"] = {
+                                total_groups: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 0,
+                                total_creeps: ("Spawn and Swamp" == TState.GameType) ? 4 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 0,
+                                melee_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 0,
+                                ranged_creeps: ("Spawn and Swamp" == TState.GameType) ? 2 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 0,
+                                healer_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 0,
+                            };
+                            TState.GroupTierCriteria[TState.TechLevelKeys[i]]["capture_groups"] = {
+                                total_groups: ("Spawn and Swamp" == TState.GameType) ? 0 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 0,
+                            };
+                        break;
+                        case "TIER2":
+                            TState.GroupTierCriteria[TState.TechLevelKeys[i]]["harvester_groups"] = {
+                                total_groups: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
+                                total_creeps: ("Spawn and Swamp" == TState.GameType) ? 4 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 2,
+                                harvester_creeps: ("Spawn and Swamp" == TState.GameType) ? 0 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
+                                transport_creeps: ("Spawn and Swamp" == TState.GameType) ? 2 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
+                            };
+                            TState.GroupTierCriteria[TState.TechLevelKeys[i]]["build_groups"] = {
+                                total_groups: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
+                                total_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
+                                builder_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
+                            };
+                            TState.GroupTierCriteria[TState.TechLevelKeys[i]]["defense_groups"] = {
+                                total_groups: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
+                                total_creeps: ("Spawn and Swamp" == TState.GameType) ? 3 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 3,
+                                melee_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
+                                ranged_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
+                                healer_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
+                            };
+                            TState.GroupTierCriteria[TState.TechLevelKeys[i]]["attack_groups"] = {
+                                total_groups: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 0,
+                                total_creeps: ("Spawn and Swamp" == TState.GameType) ? 4 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 0,
+                                melee_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 0,
+                                ranged_creeps: ("Spawn and Swamp" == TState.GameType) ? 2 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 0,
+                                healer_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 0,
+                            };
+                            TState.GroupTierCriteria[TState.TechLevelKeys[i]]["capture_groups"] = {
+                                total_groups: ("Spawn and Swamp" == TState.GameType) ? 0 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 0,
+                            };
+                        break;
+                        case "TIER3":
+                            TState.GroupTierCriteria[TState.TechLevelKeys[i]]["harvester_groups"] = {
+                                total_groups: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
+                                total_creeps: ("Spawn and Swamp" == TState.GameType) ? 4 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 2,
+                                harvester_creeps: ("Spawn and Swamp" == TState.GameType) ? 0 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
+                                transport_creeps: ("Spawn and Swamp" == TState.GameType) ? 2 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
+                            };
+                            TState.GroupTierCriteria[TState.TechLevelKeys[i]]["build_groups"] = {
+                                total_groups: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
+                                total_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
+                                builder_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
+                            };
+                            TState.GroupTierCriteria[TState.TechLevelKeys[i]]["defense_groups"] = {
+                                total_groups: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
+                                total_creeps: ("Spawn and Swamp" == TState.GameType) ? 3 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 3,
+                                melee_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
+                                ranged_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
+                                healer_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
+                            };
+                            TState.GroupTierCriteria[TState.TechLevelKeys[i]]["attack_groups"] = {
+                                total_groups: ("Spawn and Swamp" == TState.GameType) ? 5 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 0,
+                                total_creeps: ("Spawn and Swamp" == TState.GameType) ? 4 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 0,
+                                melee_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 0,
+                                ranged_creeps: ("Spawn and Swamp" == TState.GameType) ? 2 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 0,
+                                healer_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 0,
+                            };
+                            TState.GroupTierCriteria[TState.TechLevelKeys[i]]["capture_groups"] = {
+                                total_groups: ("Spawn and Swamp" == TState.GameType) ? 0 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 0,
+                            };
+                        break;
+                        case "TIER4":
+                            TState.GroupTierCriteria[TState.TechLevelKeys[i]]["harvester_groups"] = {
+                                total_groups: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
+                                total_creeps: ("Spawn and Swamp" == TState.GameType) ? 4 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 2,
+                                harvester_creeps: ("Spawn and Swamp" == TState.GameType) ? 0 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
+                                transport_creeps: ("Spawn and Swamp" == TState.GameType) ? 2 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
+                            };
+                            TState.GroupTierCriteria[TState.TechLevelKeys[i]]["build_groups"] = {
+                                total_groups: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
+                                total_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
+                                builder_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
+                            };
+                            TState.GroupTierCriteria[TState.TechLevelKeys[i]]["defense_groups"] = {
+                                total_groups: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
+                                total_creeps: ("Spawn and Swamp" == TState.GameType) ? 3 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 3,
+                                melee_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
+                                ranged_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
+                                healer_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
+                            };
+                            TState.GroupTierCriteria[TState.TechLevelKeys[i]]["attack_groups"] = {
+                                total_groups: ("Spawn and Swamp" == TState.GameType) ? 10 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 0,
+                                total_creeps: ("Spawn and Swamp" == TState.GameType) ? 4 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 0,
+                                melee_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 0,
+                                ranged_creeps: ("Spawn and Swamp" == TState.GameType) ? 2 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 0,
+                                healer_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 0,
+                            };
+                            TState.GroupTierCriteria[TState.TechLevelKeys[i]]["capture_groups"] = {
+                                total_groups: ("Spawn and Swamp" == TState.GameType) ? 0 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 0,
+                            };
+                        break;
+                    }
+                      
                 }
-                  
             }
+            
         },
 
         InitGroups:function () {
@@ -1060,6 +1136,18 @@ let TState = {
                             CurrentTarget : null,
                             TargetType : "",
                             CurrentStatus: "",
+                            CurrentCollisions: [],
+                            DangerCreepCollision: [],
+                            AgroRect: {
+                                center_x: 0,
+                                center_y: 0,
+                                top_left: 0,  
+                                top_right: 0,
+                                bot_left: 0, 
+                                bot_right: 0,
+                                width: 0,
+                                height: 0,
+                            },
                             CreepObj: null,
                             Objectives: [],
 
@@ -1076,6 +1164,18 @@ let TState = {
                             CurrentTarget : null,
                             TargetType : "",
                             CurrentStatus: "",
+                            CurrentCollisions: [],
+                            DangerCreepCollision: [],
+                            AgroRect: {
+                                center_x: 0,
+                                center_y: 0,
+                                top_left: 0,  
+                                top_right: 0,
+                                bot_left: 0, 
+                                bot_right: 0,
+                                width: 0,
+                                height: 0,
+                            },
                             CreepObj: null,
                             Objectives: [],
                         };
@@ -1104,6 +1204,18 @@ let TState = {
                             CurrentTarget : null,
                             TargetType : "",
                             CurrentStatus: "",
+                            CurrentCollisions: [],
+                            DangerCreepCollision: [],
+                            AgroRect: {
+                                center_x: 0,
+                                center_y: 0,
+                                top_left: 0,  
+                                top_right: 0,
+                                bot_left: 0, 
+                                bot_right: 0,
+                                width: 0,
+                                height: 0,
+                            },
                             CreepObj: null,
                             Objectives: [],
 
@@ -1120,6 +1232,18 @@ let TState = {
                             CurrentTarget : null,
                             TargetType : "",
                             CurrentStatus: "",
+                            CurrentCollisions: [],
+                            DangerCreepCollision: [],
+                            AgroRect: {
+                                center_x: 0,
+                                center_y: 0,
+                                top_left: 0,  
+                                top_right: 0,
+                                bot_left: 0, 
+                                bot_right: 0,
+                                width: 0,
+                                height: 0,
+                            },
                             CreepObj: null,
                             Objectives: [],
                         };
@@ -1139,6 +1263,18 @@ let TState = {
                             CurrentTarget : null,
                             TargetType : "",
                             CurrentStatus: "",
+                            CurrentCollisions: [],
+                            DangerCreepCollision: [],
+                            AgroRect: {
+                                center_x: 0,
+                                center_y: 0,
+                                top_left: 0,  
+                                top_right: 0,
+                                bot_left: 0, 
+                                bot_right: 0,
+                                width: 0,
+                                height: 0,
+                            },
                             CreepObj: null,
                             Objectives: [],
 
@@ -1160,6 +1296,18 @@ let TState = {
                             CurrentTarget : null,
                             TargetType : "",
                             CurrentStatus: "",
+                            CurrentCollisions: [],
+                            DangerCreepCollision: [],
+                            AgroRect: {
+                                center_x: 0,
+                                center_y: 0,
+                                top_left: 0,  
+                                top_right: 0,
+                                bot_left: 0, 
+                                bot_right: 0,
+                                width: 0,
+                                height: 0,
+                            },
                             CreepObj: null,
                             Objectives: [],
                         };
@@ -1181,6 +1329,18 @@ let TState = {
                             CurrentTarget : null,
                             TargetType : "",
                             CurrentStatus: "",
+                            CurrentCollisions: [],
+                            DangerCreepCollision: [],
+                            AgroRect: {
+                                center_x: 0,
+                                center_y: 0,
+                                top_left: 0,  
+                                top_right: 0,
+                                bot_left: 0, 
+                                bot_right: 0,
+                                width: 0,
+                                height: 0,
+                            },
                             CreepObj: null,
                             Objectives: [],
 
@@ -1197,6 +1357,18 @@ let TState = {
                             CurrentTarget : null,
                             TargetType : "",
                             CurrentStatus: "",
+                            CurrentCollisions: [],
+                            DangerCreepCollision: [],
+                            AgroRect: {
+                                center_x: 0,
+                                center_y: 0,
+                                top_left: 0,  
+                                top_right: 0,
+                                bot_left: 0, 
+                                bot_right: 0,
+                                width: 0,
+                                height: 0,
+                            },
                             CreepObj: null,
                             Objectives: [],
 
@@ -1213,6 +1385,18 @@ let TState = {
                             CurrentTarget : null,
                             TargetType : "",
                             CurrentStatus: "",
+                            CurrentCollisions: [],
+                            DangerCreepCollision: [],
+                            AgroRect: {
+                                center_x: 0,
+                                center_y: 0,
+                                top_left: 0,  
+                                top_right: 0,
+                                bot_left: 0, 
+                                bot_right: 0,
+                                width: 0,
+                                height: 0,
+                            },
                             CreepObj: null,
                             Objectives: [],
 
@@ -1248,6 +1432,18 @@ let TState = {
                             CurrentTarget : null,
                             TargetType : "",
                             CurrentStatus: "",
+                            CurrentCollisions: [],
+                            DangerCreepCollision: [],
+                            AgroRect: {
+                                center_x: 0,
+                                center_y: 0,
+                                top_left: 0,  
+                                top_right: 0,
+                                bot_left: 0, 
+                                bot_right: 0,
+                                width: 0,
+                                height: 0,
+                            },
                             CreepObj: null,
                             Objectives: [],
 
@@ -1263,6 +1459,18 @@ let TState = {
                             CurrentTarget : null,
                             TargetType : "",
                             CurrentStatus: "",
+                            CurrentCollisions: [],
+                            DangerCreepCollision: [],
+                            AgroRect: {
+                                center_x: 0,
+                                center_y: 0,
+                                top_left: 0,  
+                                top_right: 0,
+                                bot_left: 0, 
+                                bot_right: 0,
+                                width: 0,
+                                height: 0,
+                            },
                             CreepObj: null,
                             Objectives: [],
 
@@ -1278,6 +1486,18 @@ let TState = {
                             CurrentTarget : null,
                             TargetType : "",
                             CurrentStatus: "",
+                            CurrentCollisions: [],
+                            DangerCreepCollision: [],
+                            AgroRect: {
+                                center_x: 0,
+                                center_y: 0,
+                                top_left: 0,  
+                                top_right: 0,
+                                bot_left: 0, 
+                                bot_right: 0,
+                                width: 0,
+                                height: 0,
+                            },
                             CreepObj: null,
                             Objectives: [],
 
@@ -1298,6 +1518,18 @@ let TState = {
                             CurrentTarget : null,
                             TargetType : "",
                             CurrentStatus: "",
+                            CurrentCollisions: [],
+                            DangerCreepCollision: [],
+                            AgroRect: {
+                                center_x: 0,
+                                center_y: 0,
+                                top_left: 0,  
+                                top_right: 0,
+                                bot_left: 0, 
+                                bot_right: 0,
+                                width: 0,
+                                height: 0,
+                            },
                             CreepObj: null,
                             Objectives: [],
 
@@ -1313,6 +1545,18 @@ let TState = {
                             CurrentTarget : null,
                             TargetType : "",
                             CurrentStatus: "",
+                            CurrentCollisions: [],
+                            DangerCreepCollision: [],
+                            AgroRect: {
+                                center_x: 0,
+                                center_y: 0,
+                                top_left: 0,  
+                                top_right: 0,
+                                bot_left: 0, 
+                                bot_right: 0,
+                                width: 0,
+                                height: 0,
+                            },
                             CreepObj: null,
                             Objectives: [],
 
@@ -1328,6 +1572,18 @@ let TState = {
                             CurrentTarget : null,
                             TargetType : "",
                             CurrentStatus: "",
+                            CurrentCollisions: [],
+                            DangerCreepCollision: [],
+                            AgroRect: {
+                                center_x: 0,
+                                center_y: 0,
+                                top_left: 0,  
+                                top_right: 0,
+                                bot_left: 0, 
+                                bot_right: 0,
+                                width: 0,
+                                height: 0,
+                            },
                             CreepObj: null,
                             Objectives: [],
 
@@ -1361,6 +1617,18 @@ let TState = {
                             CurrentTarget : null,
                             TargetType : "",
                             CurrentStatus: "",
+                            CurrentCollisions: [],
+                            DangerCreepCollision: [],
+                            AgroRect: {
+                                center_x: 0,
+                                center_y: 0,
+                                top_left: 0,  
+                                top_right: 0,
+                                bot_left: 0, 
+                                bot_right: 0,
+                                width: 0,
+                                height: 0,
+                            },
                             CreepObj: null,
                             Objectives: [],
                         };
@@ -1375,6 +1643,18 @@ let TState = {
                             CurrentTarget : null,
                             TargetType : "",
                             CurrentStatus: "",
+                            CurrentCollisions: [],
+                            DangerCreepCollision: [],
+                            AgroRect: {
+                                center_x: 0,
+                                center_y: 0,
+                                top_left: 0,  
+                                top_right: 0,
+                                bot_left: 0, 
+                                bot_right: 0,
+                                width: 0,
+                                height: 0,
+                            },
                             CreepObj: null,
                             Objectives: [],
                         };
@@ -1389,6 +1669,18 @@ let TState = {
                             CurrentTarget : null,
                             TargetType : "",
                             CurrentStatus: "",
+                            CurrentCollisions: [],
+                            DangerCreepCollision: [],
+                            AgroRect: {
+                                center_x: 0,
+                                center_y: 0,
+                                top_left: 0,  
+                                top_right: 0,
+                                bot_left: 0, 
+                                bot_right: 0,
+                                width: 0,
+                                height: 0,
+                            },
                             CreepObj: null,
                             Objectives: [],
                         };
@@ -1404,7 +1696,6 @@ let TState = {
 
 export function loop() {
     //TODO: Trigger Inits based off error flags thrown.
-    console.log(Math.sqrt(16));
     if (!TState.Preflight) {
         TState.Init();       
     }    
