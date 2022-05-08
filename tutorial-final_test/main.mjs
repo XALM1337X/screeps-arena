@@ -175,38 +175,30 @@ let TState = {
         },
 
             /*
-            CREEPWRAPPER
-            {
-                ID: 0,
-                GroupId: 'harvester_groups-0',
-                GroupType: 'harvester_groups',
-                CreepType: 'harvester',
-                CurrentTarget: null,
+            let Wrapper = {
+                ID: TState.CreepIdTicker++,
+                GroupId: TState.CreepGroups["harvester_groups"][i].ID,
+                GroupType: "harvester_groups",
+                CreepType: "harvester",
+                CurrentTarget : null,
                 TargetType : "",
                 CurrentStatus: "",
-                CreepObj: Creep {
-                  id: 17,
-                  x: 51,
-                  y: 44,
-                  ticksToDecay: undefined,
-                  hits: 800,
-                  hitsMax: 800,
-                  my: true,
-                  fatigue: 0,
-                  body: [
-                    { type: 'move', hits: 100 },
-                    { type: 'move', hits: 100 },
-                    { type: 'work', hits: 100 },
-                    { type: 'work', hits: 100 },
-                    { type: 'carry', hits: 100 },
-                    { type: 'carry', hits: 100 },
-                    { type: 'carry', hits: 100 },
-                    { type: 'carry', hits: 100 }
-                  ],
-                  store: Store {}
+                CurrentCollisions: [],
+                DangerCreepCollision: [],
+                AgroRect: {
+                    center_x: 0,
+                    center_y: 0,
+                    top_left: 0,  
+                    top_right: 0,
+                    bot_left: 0, 
+                    bot_right: 0,
+                    width: 0,
+                    height: 0,
                 },
-                Objectives: []
-              }
+                CreepObj: null,
+                Objectives: [],
+
+            };
               */
 
         RunAttacker:function(CreepWrapper) {
