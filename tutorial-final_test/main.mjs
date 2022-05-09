@@ -58,80 +58,92 @@ let TState = {
     ExitStatus: 0,
 
     TestFlag : false,
+    //TODO: This will be checked in loop periodically.
+    CheckTechUpgradeState:function() {
+        //Will check how many groups we have. 
+        //How many resources we have.
+        //And how long its been since "Max tech groups" numbers reached
+    },
 
-    Init:function() {
 
-        TState.InitGameType();
 
-        if (TState.GameType == "Spawn and Swamp") {            
-            if (arenaInfo.level == 1) {
-                TState.InitSASSTD();
-            } else if (arenaInfo.level > 1) {
-                TState.InitSASADV();
+    Init: {
+
+        InitMain:function() {
+
+            TState.Init.InitGameType();
+    
+            if (TState.GameType == "Spawn and Swamp") {            
+                if (arenaInfo.level == 1) {
+                    TState.Init.InitSASSTD();
+                } else if (arenaInfo.level > 1) {
+                    TState.Init.InitSASADV();
+                }
+            } else if (TState.GameType == "Collect and Control") {
+                if (arenaInfo.level == 1) {
+                    TState.Init.InitCACSTD();
+                } else if (arenaInfo.level > 1) {
+                    TState.Init.InitCACADV();
+                }
+            } else if (TState.GameType == "Capture the Flag") {
+                if (arenaInfo.level == 1) {
+                    TState.Init.InitCTFSTD();
+                } else if (arenaInfo.level > 1) {
+                    TState.Init.InitCTFADV();
+                }
+            } else {
+                TState.Init.InitTutorial();
             }
-        } else if (TState.GameType == "Collect and Control") {
-            if (arenaInfo.level == 1) {
-                TState.InitCACSTD();
-            } else if (arenaInfo.level > 1) {
-                TState.InitCACADV();
-            }
-        } else if (TState.GameType == "Capture the Flag") {
-            if (arenaInfo.level == 1) {
-                TState.InitCTFSTD();
-            } else if (arenaInfo.level > 1) {
-                TState.InitCTFADV();
-            }
-        } else {
-            TState.InitTutorial();
-        }
-        TState.Preflight = true;
-    },
-    InitGameType:function () {
-        TState.GameType = arenaInfo.name;
-    },
-    InitCTFSTD:function() {
-        console.log("TBA.");
-    },
-    InitCTFADV:function() {
-        console.log("TBA.");
-    },
-    InitCACSTD:function() {
-        console.log("TBA.");
-    },
-    InitCACADV:function() {
-        console.log("TBA.");
-    },
-    InitSASSTD:function() {
-        TState.Structures.Spawn.InitSpawn();
-        TState.Structures.InitEnergySupply();
-        TState.Structures.Containers.InitContainers();
-        TState.Creeps.InitCreepBodyTierCriteria();
-        TState.Groups.InitGroupTierCriteria();
-        TState.Groups.InitGroups();
-        TState.Groups.InitCreepWrappers();
-        TState.Structures.Spawn.InitSpawnQueue();
-    },
-    InitSASADV:function() {
-        TState.Resources.InitRoomSources();
-        TState.Structures.InitEnergySupply();
-        TState.Creeps.InitCreepBodyTierCriteria();
-        TState.Creeps.InitSpecialSNSADVCreep();
-        TState.Groups.InitGroupTierCriteria();
-        TState.Groups.InitGroups();
-        TState.Groups.InitCreepWrappers();
-        TState.Structures.Spawn.InitSpawnQueue();
-    },
-    InitTutorial:function() {
-        TState.IsTutorial = true
-        TState.Resources.InitRoomSources();
-        TState.Structures.Spawn.InitSpawn();
-        TState.Structures.InitEnergySupply();
-        TState.Creeps.InitCreepBodyTierCriteria();
-        TState.Groups.InitGroupTierCriteria();
-        TState.Groups.InitGroups();
-        TState.Groups.InitCreepWrappers();
-        TState.Structures.Spawn.InitSpawnQueue();
-        TState.RunTime.ScanEnemyCreeps();
+            TState.Preflight = true;
+        },
+        InitGameType:function () {
+            TState.GameType = arenaInfo.name;
+        },
+        InitCTFSTD:function() {
+            console.log("TBA.");
+        },
+        InitCTFADV:function() {
+            console.log("TBA.");
+        },
+        InitCACSTD:function() {
+            console.log("TBA.");
+        },
+        InitCACADV:function() {
+            console.log("TBA.");
+        },
+        InitSASSTD:function() {
+            TState.Structures.Spawn.InitSpawn();
+            TState.Structures.InitEnergySupply();
+            TState.Structures.Containers.InitContainers();
+            TState.Groups.Creeps.InitCreepBodyTierCriteria();
+            TState.Groups.InitGroupTierCriteria();
+            TState.Groups.InitGroups();
+            TState.Groups.InitCreepWrappers();
+            TState.Structures.Spawn.InitSpawnQueue();
+        },
+        InitSASADV:function() {
+            TState.Resources.InitRoomSources();
+            TState.Structures.InitEnergySupply();
+            TState.Groups.Creeps.InitCreepBodyTierCriteria();
+            TState.Creeps.InitSpecialSNSADVCreep();
+            TState.Groups.InitGroupTierCriteria();
+            TState.Groups.InitGroups();
+            TState.Groups.InitCreepWrappers();
+            TState.Structures.Spawn.InitSpawnQueue();
+        },
+        InitTutorial:function() {
+            TState.IsTutorial = true
+            TState.Resources.InitRoomSources();
+            TState.Structures.Spawn.InitSpawn();
+            TState.Structures.InitEnergySupply();
+            TState.Groups.Creeps.InitCreepBodyTierCriteria();
+            TState.Groups.InitGroupTierCriteria();
+            TState.Groups.InitGroups();
+            TState.Groups.InitCreepWrappers();
+            TState.Structures.Spawn.InitSpawnQueue();
+            TState.RunTime.ScanEnemyCreeps();
+        },
+    
     },
 
 
@@ -174,33 +186,6 @@ let TState = {
             }
         },
 
-            /*
-            let Wrapper = {
-                ID: TState.CreepIdTicker++,
-                GroupId: TState.CreepGroups["harvester_groups"][i].ID,
-                GroupType: "harvester_groups",
-                CreepType: "harvester",
-                CurrentTarget : null,
-                TargetType : "",
-                CurrentStatus: "",
-                CurrentCollisions: [],
-                DangerCreepCollision: [],
-                AgroRect: {
-                    center_x: 0,
-                    center_y: 0,
-                    top_left: 0,  
-                    top_right: 0,
-                    bot_left: 0, 
-                    bot_right: 0,
-                    width: 0,
-                    height: 0,
-                },
-                CreepObj: null,
-                Objectives: [],
-
-            };
-            */
-
         RunAttacker:function(CreepWrapper) {
             
         },
@@ -227,7 +212,7 @@ let TState = {
                                 closest = TState.RoomSources[i];
                                 continue;
                             }
-                            if (TState.RunTime.getDistance(CreepWrapper.CreepObj, TState.RoomSources[i]) < closest) {
+                            if (TState.Utils.getDistance(CreepWrapper.CreepObj, TState.RoomSources[i]) < closest) {
                                 closest = TState.RoomSources[i];
                             }
                         }
@@ -283,26 +268,61 @@ let TState = {
             }
         },
 
-        perimiterCheck:function() {
 
+        Utils: {
+            getDistance:function(obj1, obj2) {
+                let ydiff = obj2.y - obj1.y;
+                let xdiff = obj2.x - obj1.x;
+                return Math.sqrt((ydiff*ydiff)+(xdiff*xdiff))
+            },
+            perimiterCheck:function() {
+                /*
+                //The sides of the rectangles
+                int leftA, leftB;
+                int rightA, rightB;
+                int topA, topB;
+                int bottomA, bottomB;
+
+                //Calculate the sides of rect A
+                leftA = a.x;
+                rightA = a.x + a.w;
+                topA = a.y;
+                bottomA = a.y + a.h;
+
+                //Calculate the sides of rect B
+                leftB = b.x;
+                rightB = b.x + b.w;
+                topB = b.y;
+                bottomB = b.y + b.h;
+                //If any of the sides from A are outside of B
+                if( bottomA <= topB )
+                {
+                    return false;
+                }
+
+                if( topA >= bottomB )
+                {
+                    return false;
+                }
+
+                if( rightA <= leftB )
+                {
+                    return false;
+                }
+
+                if( leftA >= rightB )
+                {
+                    return false;
+                }
+
+                //If none of the sides from A are outside B
+                return true;
+                */
+            },
         },
-
-        getDistance:function(obj1, obj2) {
-            let ydiff = obj2.y - obj1.y;
-            let xdiff = obj2.x - obj1.x;
-            return Math.sqrt((ydiff*ydiff)+(xdiff*xdiff))
-        }
-
     },
 
 
-
-    //TODO: This will be checked in loop periodically.
-    CheckTechUpgradeState:function() {
-        //Will check how many groups we have. 
-        //How many resources we have.
-        //And how long its been since "Max tech groups" numbers reached
-    },
     Structures: {
         InitEnergySupply:function() {
             TState.Structures.ScanEnergySupply();
@@ -473,342 +493,7 @@ let TState = {
         }
     },
     
-    Creeps: {
-        InitSpecialSNSADVCreep:function() {
 
-        },
-        InitCreepBodyTierCriteria:function() {
-            for (let i = 0; i < TState.TechLevelKeys.length; i++) {                
-                if (!TState.CreepBodyTierCriteria[TState.TechLevelKeys[i]]) {
-                    TState.CreepBodyTierCriteria[TState.TechLevelKeys[i]] = [];
-                }
-                /*
-                    Work: 100,
-                    Move: 50,
-                    Carry: 50,
-                    Attack: 80,
-                    RangedAttack: 150,
-                    Heal: 250,
-                    Tough: 10,
-                */
-                //TODO: Change values when implementing tier changing.
-                //TODO: ~ TIER2-4 incomplete.
-                switch (TState.TechLevelKeys[i]) {
-                    case "TIER0":
-                        TState.CreepBodyTierCriteria[TState.TechLevelKeys[i]]["harvester"] = {
-                            work: 2,    //200
-                            move: 2,    //100
-                            carry: 4,   //200
-                            attack: 0,  //0
-                            ranged: 0,  //0
-                            heal: 0,    //0
-                            tough: 0,   //0
-                            total: 500,
-                        };
-                        TState.CreepBodyTierCriteria[TState.TechLevelKeys[i]]["transporter"] = {
-                            work: 0,    //0
-                            move: 4,    //200
-                            carry: 6,   //300
-                            attack: 0,  //0
-                            ranged: 0,  //0
-                            heal: 0,    //0
-                            tough: 0,   //0
-                            total: 500,
-                        };
-                        TState.CreepBodyTierCriteria[TState.TechLevelKeys[i]]["builder"] = {
-                            work: 2,    //200
-                            move: 4,    //200
-                            carry: 2,   //100
-                            attack: 0,  //0
-                            ranged: 0,  //0
-                            heal: 0,    //0
-                            tough: 0,   //0 
-                            total: 500,
-                        };
-                        TState.CreepBodyTierCriteria[TState.TechLevelKeys[i]]["melee"] = {
-                            work: 0,    //0
-                            move: 4,    //200
-                            carry: 0,   //0
-                            attack: 2,  //160
-                            ranged: 0,  //0
-                            heal: 0,    //0
-                            tough: 14,   //140
-                            total: 500,
-                        };
-                        TState.CreepBodyTierCriteria[TState.TechLevelKeys[i]]["ranged"] = {
-                            work: 0,    //0
-                            move: 4,    //200
-                            carry: 0,   //0
-                            attack: 0,  //0
-                            ranged: 1,  //150
-                            heal: 0,    //0
-                            tough: 15,   //150 
-                            total: 500,
-                        };
-                        TState.CreepBodyTierCriteria[TState.TechLevelKeys[i]]["healer"] = {
-                            work: 0,    //0
-                            move: 3,    //150
-                            carry: 0,   //0
-                            attack: 0,  //0
-                            ranged: 0,  //0
-                            heal: 1,    //250
-                            tough: 10,  //100
-                            total: 500,
-                        };
-                        
-                    break;
-                    case "TIER1": 
-                        TState.CreepBodyTierCriteria[TState.TechLevelKeys[i]]["harvester"] = {
-                            work: 4,    //400
-                            move: 4,    //200
-                            carry: 8,   //400
-                            attack: 0,  //0
-                            ranged: 0,  //0
-                            heal: 0,    //0
-                            tough: 0,   //0
-                            total: 1000,
-                        };
-                        TState.CreepBodyTierCriteria[TState.TechLevelKeys[i]]["transporter"] = {
-                            work: 0,    //0
-                            move: 8,    //400
-                            carry: 12,  //600
-                            attack: 0,  //0
-                            ranged: 0,  //0
-                            heal: 0,    //0
-                            tough: 0,   //0
-                            total: 1000,
-                        };
-                        TState.CreepBodyTierCriteria[TState.TechLevelKeys[i]]["builder"] = {
-                            work: 5,    //500
-                            move: 4,    //200
-                            carry: 6,   //300
-                            attack: 0,  //0
-                            ranged: 0,  //0
-                            heal: 0,    //0
-                            tough: 0,   //0 
-                            total: 1000,
-                        };
-                        TState.CreepBodyTierCriteria[TState.TechLevelKeys[i]]["melee"] = {
-                            work: 0,    //0
-                            move: 4,    //200
-                            carry: 0,   //0
-                            attack: 5,  //400
-                            ranged: 0,  //0
-                            heal: 0,    //0
-                            tough: 40,   //400
-                            total: 1000,
-                        };
-                        TState.CreepBodyTierCriteria[TState.TechLevelKeys[i]]["ranged"] = {
-                            work: 0,     //0
-                            move: 4,     //200
-                            carry: 0,    //0
-                            attack: 0,   //0
-                            ranged: 3,   //450
-                            heal: 0,     //0
-                            tough: 35,   //350
-                            total: 1000,
-                        };
-                        TState.CreepBodyTierCriteria[TState.TechLevelKeys[i]]["healer"] = {
-                            work: 0,    //0
-                            move: 3,    //150
-                            carry: 0,   //0
-                            attack: 0,  //0
-                            ranged: 0,  //0
-                            heal: 3,    //750
-                            tough: 20,  //100
-                            total: 1000,
-                        };
-                    break;
-                    case "TIER2":
-                        TState.CreepBodyTierCriteria[TState.TechLevelKeys[i]]["harvester"] = {
-                            work: 2,    //200
-                            move: 2,    //100
-                            carry: 4,   //200
-                            attack: 0,  //0
-                            ranged: 0,  //0
-                            heal: 0,    //0
-                            tough: 0,   //0
-                            total: 500,
-                        };
-                        TState.CreepBodyTierCriteria[TState.TechLevelKeys[i]]["transporter"] = {
-                            work: 0,    //0
-                            move: 4,    //200
-                            carry: 6,   //300
-                            attack: 0,  //0
-                            ranged: 0,  //0
-                            heal: 0,    //0
-                            tough: 0,   //0
-                            total: 500,
-                        };
-                        TState.CreepBodyTierCriteria[TState.TechLevelKeys[i]]["builder"] = {
-                            work: 2,    //200
-                            move: 4,    //200
-                            carry: 2,   //100
-                            attack: 0,  //0
-                            ranged: 0,  //0
-                            heal: 0,    //0
-                            tough: 0,   //0 
-                            total: 500,
-                        };
-                        TState.CreepBodyTierCriteria[TState.TechLevelKeys[i]]["melee"] = {
-                            work: 0,    //0
-                            move: 4,    //200
-                            carry: 0,   //0
-                            attack: 2,  //160
-                            ranged: 0,  //0
-                            heal: 0,    //0
-                            tough: 14,   //140
-                            total: 500,
-                        };
-                        TState.CreepBodyTierCriteria[TState.TechLevelKeys[i]]["ranged"] = {
-                            work: 0,    //0
-                            move: 4,    //200
-                            carry: 0,   //0
-                            attack: 0,  //0
-                            ranged: 1,  //150
-                            heal: 0,    //0
-                            tough: 15,   //150 
-                            total: 500,
-                        };
-                        TState.CreepBodyTierCriteria[TState.TechLevelKeys[i]]["healer"] = {
-                            work: 0,    //0
-                            move: 3,    //150
-                            carry: 0,   //0
-                            attack: 0,  //0
-                            ranged: 0,  //0
-                            heal: 1,    //250
-                            tough: 10,  //100
-                            total: 500,
-                        };
-                    break;
-                    case "TIER3":
-                        TState.CreepBodyTierCriteria[TState.TechLevelKeys[i]]["harvester"] = {
-                            work: 2,    //200
-                            move: 2,    //100
-                            carry: 4,   //200
-                            attack: 0,  //0
-                            ranged: 0,  //0
-                            heal: 0,    //0
-                            tough: 0,   //0
-                            total: 500,
-                        };
-                        TState.CreepBodyTierCriteria[TState.TechLevelKeys[i]]["transporter"] = {
-                            work: 0,    //0
-                            move: 4,    //200
-                            carry: 6,   //300
-                            attack: 0,  //0
-                            ranged: 0,  //0
-                            heal: 0,    //0
-                            tough: 0,   //0
-                            total: 500,
-                        };
-                        TState.CreepBodyTierCriteria[TState.TechLevelKeys[i]]["builder"] = {
-                            work: 2,    //200
-                            move: 4,    //200
-                            carry: 2,   //100
-                            attack: 0,  //0
-                            ranged: 0,  //0
-                            heal: 0,    //0
-                            tough: 0,   //0 
-                            total: 500,
-                        };
-                        TState.CreepBodyTierCriteria[TState.TechLevelKeys[i]]["melee"] = {
-                            work: 0,    //0
-                            move: 4,    //200
-                            carry: 0,   //0
-                            attack: 2,  //160
-                            ranged: 0,  //0
-                            heal: 0,    //0
-                            tough: 14,   //140
-                            total: 500,
-                        };
-                        TState.CreepBodyTierCriteria[TState.TechLevelKeys[i]]["ranged"] = {
-                            work: 0,    //0
-                            move: 4,    //200
-                            carry: 0,   //0
-                            attack: 0,  //0
-                            ranged: 1,  //150
-                            heal: 0,    //0
-                            tough: 15,   //150 
-                            total: 500,
-                        };
-                        TState.CreepBodyTierCriteria[TState.TechLevelKeys[i]]["healer"] = {
-                            work: 0,    //0
-                            move: 3,    //150
-                            carry: 0,   //0
-                            attack: 0,  //0
-                            ranged: 0,  //0
-                            heal: 1,    //250
-                            tough: 10,  //100
-                            total: 500,
-                        };
-                    break;
-                    case "TIER4":
-                        TState.CreepBodyTierCriteria[TState.TechLevelKeys[i]]["harvester"] = {
-                            work: 2,    //200
-                            move: 2,    //100
-                            carry: 4,   //200
-                            attack: 0,  //0
-                            ranged: 0,  //0
-                            heal: 0,    //0
-                            tough: 0,   //0
-                            total: 500,
-                        };
-                        TState.CreepBodyTierCriteria[TState.TechLevelKeys[i]]["transporter"] = {
-                            work: 0,    //0
-                            move: 4,    //200
-                            carry: 6,   //300
-                            attack: 0,  //0
-                            ranged: 0,  //0
-                            heal: 0,    //0
-                            tough: 0,   //0
-                            total: 500,
-                        };
-                        TState.CreepBodyTierCriteria[TState.TechLevelKeys[i]]["builder"] = {
-                            work: 2,    //200
-                            move: 4,    //200
-                            carry: 2,   //100
-                            attack: 0,  //0
-                            ranged: 0,  //0
-                            heal: 0,    //0
-                            tough: 0,   //0 
-                            total: 500,
-                        };
-                        TState.CreepBodyTierCriteria[TState.TechLevelKeys[i]]["melee"] = {
-                            work: 0,    //0
-                            move: 4,    //200
-                            carry: 0,   //0
-                            attack: 2,  //160
-                            ranged: 0,  //0
-                            heal: 0,    //0
-                            tough: 14,   //140
-                            total: 500,
-                        };
-                        TState.CreepBodyTierCriteria[TState.TechLevelKeys[i]]["ranged"] = {
-                            work: 0,    //0
-                            move: 4,    //200
-                            carry: 0,   //0
-                            attack: 0,  //0
-                            ranged: 1,  //150
-                            heal: 0,    //0
-                            tough: 15,   //150 
-                            total: 500,
-                        };
-                        TState.CreepBodyTierCriteria[TState.TechLevelKeys[i]]["healer"] = {
-                            work: 0,    //0
-                            move: 3,    //150
-                            carry: 0,   //0
-                            attack: 0,  //0
-                            ranged: 0,  //0
-                            heal: 1,    //250
-                            tough: 10,  //100
-                            total: 500,
-                        };
-                    break;
-                }
-            }
-        },
-    },
 
     Resources: {
         InitRoomSources:function() {
@@ -1130,9 +815,7 @@ let TState = {
                             CurrentStatus: "",
                             CurrentCollisions: [],
                             DangerCreepCollision: [],
-                            AgroRect: {
-                                center_x: 0,
-                                center_y: 0,
+                            AgroRect: {                                
                                 top_left: 0,  
                                 top_right: 0,
                                 bot_left: 0, 
@@ -1158,9 +841,7 @@ let TState = {
                             CurrentStatus: "",
                             CurrentCollisions: [],
                             DangerCreepCollision: [],
-                            AgroRect: {
-                                center_x: 0,
-                                center_y: 0,
+                            AgroRect: {                                
                                 top_left: 0,  
                                 top_right: 0,
                                 bot_left: 0, 
@@ -1198,9 +879,7 @@ let TState = {
                             CurrentStatus: "",
                             CurrentCollisions: [],
                             DangerCreepCollision: [],
-                            AgroRect: {
-                                center_x: 0,
-                                center_y: 0,
+                            AgroRect: {                                
                                 top_left: 0,  
                                 top_right: 0,
                                 bot_left: 0, 
@@ -1226,9 +905,7 @@ let TState = {
                             CurrentStatus: "",
                             CurrentCollisions: [],
                             DangerCreepCollision: [],
-                            AgroRect: {
-                                center_x: 0,
-                                center_y: 0,
+                            AgroRect: {                                
                                 top_left: 0,  
                                 top_right: 0,
                                 bot_left: 0, 
@@ -1257,9 +934,7 @@ let TState = {
                             CurrentStatus: "",
                             CurrentCollisions: [],
                             DangerCreepCollision: [],
-                            AgroRect: {
-                                center_x: 0,
-                                center_y: 0,
+                            AgroRect: {                                
                                 top_left: 0,  
                                 top_right: 0,
                                 bot_left: 0, 
@@ -1290,9 +965,7 @@ let TState = {
                             CurrentStatus: "",
                             CurrentCollisions: [],
                             DangerCreepCollision: [],
-                            AgroRect: {
-                                center_x: 0,
-                                center_y: 0,
+                            AgroRect: {                                
                                 top_left: 0,  
                                 top_right: 0,
                                 bot_left: 0, 
@@ -1323,9 +996,7 @@ let TState = {
                             CurrentStatus: "",
                             CurrentCollisions: [],
                             DangerCreepCollision: [],
-                            AgroRect: {
-                                center_x: 0,
-                                center_y: 0,
+                            AgroRect: {                                
                                 top_left: 0,  
                                 top_right: 0,
                                 bot_left: 0, 
@@ -1351,9 +1022,7 @@ let TState = {
                             CurrentStatus: "",
                             CurrentCollisions: [],
                             DangerCreepCollision: [],
-                            AgroRect: {
-                                center_x: 0,
-                                center_y: 0,
+                            AgroRect: {                                
                                 top_left: 0,  
                                 top_right: 0,
                                 bot_left: 0, 
@@ -1379,9 +1048,7 @@ let TState = {
                             CurrentStatus: "",
                             CurrentCollisions: [],
                             DangerCreepCollision: [],
-                            AgroRect: {
-                                center_x: 0,
-                                center_y: 0,
+                            AgroRect: {                                
                                 top_left: 0,  
                                 top_right: 0,
                                 bot_left: 0, 
@@ -1426,9 +1093,7 @@ let TState = {
                             CurrentStatus: "",
                             CurrentCollisions: [],
                             DangerCreepCollision: [],
-                            AgroRect: {
-                                center_x: 0,
-                                center_y: 0,
+                            AgroRect: {                                
                                 top_left: 0,  
                                 top_right: 0,
                                 bot_left: 0, 
@@ -1453,9 +1118,7 @@ let TState = {
                             CurrentStatus: "",
                             CurrentCollisions: [],
                             DangerCreepCollision: [],
-                            AgroRect: {
-                                center_x: 0,
-                                center_y: 0,
+                            AgroRect: {                                
                                 top_left: 0,  
                                 top_right: 0,
                                 bot_left: 0, 
@@ -1480,9 +1143,7 @@ let TState = {
                             CurrentStatus: "",
                             CurrentCollisions: [],
                             DangerCreepCollision: [],
-                            AgroRect: {
-                                center_x: 0,
-                                center_y: 0,
+                            AgroRect: {                                
                                 top_left: 0,  
                                 top_right: 0,
                                 bot_left: 0, 
@@ -1512,9 +1173,7 @@ let TState = {
                             CurrentStatus: "",
                             CurrentCollisions: [],
                             DangerCreepCollision: [],
-                            AgroRect: {
-                                center_x: 0,
-                                center_y: 0,
+                            AgroRect: {                                
                                 top_left: 0,  
                                 top_right: 0,
                                 bot_left: 0, 
@@ -1539,9 +1198,7 @@ let TState = {
                             CurrentStatus: "",
                             CurrentCollisions: [],
                             DangerCreepCollision: [],
-                            AgroRect: {
-                                center_x: 0,
-                                center_y: 0,
+                            AgroRect: {                                
                                 top_left: 0,  
                                 top_right: 0,
                                 bot_left: 0, 
@@ -1566,9 +1223,7 @@ let TState = {
                             CurrentStatus: "",
                             CurrentCollisions: [],
                             DangerCreepCollision: [],
-                            AgroRect: {
-                                center_x: 0,
-                                center_y: 0,
+                            AgroRect: {                                
                                 top_left: 0,  
                                 top_right: 0,
                                 bot_left: 0, 
@@ -1611,9 +1266,7 @@ let TState = {
                             CurrentStatus: "",
                             CurrentCollisions: [],
                             DangerCreepCollision: [],
-                            AgroRect: {
-                                center_x: 0,
-                                center_y: 0,
+                            AgroRect: {                                
                                 top_left: 0,  
                                 top_right: 0,
                                 bot_left: 0, 
@@ -1637,9 +1290,7 @@ let TState = {
                             CurrentStatus: "",
                             CurrentCollisions: [],
                             DangerCreepCollision: [],
-                            AgroRect: {
-                                center_x: 0,
-                                center_y: 0,
+                            AgroRect: {                                
                                 top_left: 0,  
                                 top_right: 0,
                                 bot_left: 0, 
@@ -1663,9 +1314,7 @@ let TState = {
                             CurrentStatus: "",
                             CurrentCollisions: [],
                             DangerCreepCollision: [],
-                            AgroRect: {
-                                center_x: 0,
-                                center_y: 0,
+                            AgroRect: {                                
                                 top_left: 0,  
                                 top_right: 0,
                                 bot_left: 0, 
@@ -1681,7 +1330,371 @@ let TState = {
 
                 }
             }            
-        },    
+        },   
+        Creeps: {
+
+            /*
+            let Wrapper = {
+                ID: TState.CreepIdTicker++,
+                GroupId: TState.CreepGroups["harvester_groups"][i].ID,
+                GroupType: "harvester_groups",
+                CreepType: "harvester",
+                CurrentTarget : null,
+                TargetType : "",
+                CurrentStatus: "",
+                CurrentCollisions: [],
+                DangerCreepCollision: [],
+                AgroRect: {
+                    
+                    
+                    top_left: 0,  
+                    top_right: 0,
+                    bot_left: 0, 
+                    bot_right: 0,
+                    width: 0,
+                    height: 0,
+                },
+                CreepObj: null,
+                Objectives: [],
+    
+            };
+            */
+            /*
+                Work: 100,
+                Move: 50,
+                Carry: 50,
+                Attack: 80,
+                RangedAttack: 150,
+                Heal: 250,
+                Tough: 10,
+            */
+            InitSpecialSNSADVCreep:function() {
+    
+            },
+            InitCreepBodyTierCriteria:function() {
+                for (let i = 0; i < TState.TechLevelKeys.length; i++) {                
+                    if (!TState.CreepBodyTierCriteria[TState.TechLevelKeys[i]]) {
+                        TState.CreepBodyTierCriteria[TState.TechLevelKeys[i]] = [];
+                    }
+
+                    //TODO: Change values when implementing tier changing.
+                    //TODO: ~ TIER2-4 incomplete.
+                    switch (TState.TechLevelKeys[i]) {
+                        case "TIER0":
+                            TState.CreepBodyTierCriteria[TState.TechLevelKeys[i]]["harvester"] = {
+                                work: 2,    //200
+                                move: 2,    //100
+                                carry: 4,   //200
+                                attack: 0,  //0
+                                ranged: 0,  //0
+                                heal: 0,    //0
+                                tough: 0,   //0
+                                total: 500,
+                            };
+                            TState.CreepBodyTierCriteria[TState.TechLevelKeys[i]]["transporter"] = {
+                                work: 0,    //0
+                                move: 4,    //200
+                                carry: 6,   //300
+                                attack: 0,  //0
+                                ranged: 0,  //0
+                                heal: 0,    //0
+                                tough: 0,   //0
+                                total: 500,
+                            };
+                            TState.CreepBodyTierCriteria[TState.TechLevelKeys[i]]["builder"] = {
+                                work: 2,    //200
+                                move: 4,    //200
+                                carry: 2,   //100
+                                attack: 0,  //0
+                                ranged: 0,  //0
+                                heal: 0,    //0
+                                tough: 0,   //0 
+                                total: 500,
+                            };
+                            TState.CreepBodyTierCriteria[TState.TechLevelKeys[i]]["melee"] = {
+                                work: 0,    //0
+                                move: 4,    //200
+                                carry: 0,   //0
+                                attack: 2,  //160
+                                ranged: 0,  //0
+                                heal: 0,    //0
+                                tough: 14,   //140
+                                total: 500,
+                            };
+                            TState.CreepBodyTierCriteria[TState.TechLevelKeys[i]]["ranged"] = {
+                                work: 0,    //0
+                                move: 4,    //200
+                                carry: 0,   //0
+                                attack: 0,  //0
+                                ranged: 1,  //150
+                                heal: 0,    //0
+                                tough: 15,   //150 
+                                total: 500,
+                            };
+                            TState.CreepBodyTierCriteria[TState.TechLevelKeys[i]]["healer"] = {
+                                work: 0,    //0
+                                move: 3,    //150
+                                carry: 0,   //0
+                                attack: 0,  //0
+                                ranged: 0,  //0
+                                heal: 1,    //250
+                                tough: 10,  //100
+                                total: 500,
+                            };
+                            
+                        break;
+                        case "TIER1": 
+                            TState.CreepBodyTierCriteria[TState.TechLevelKeys[i]]["harvester"] = {
+                                work: 4,    //400
+                                move: 4,    //200
+                                carry: 8,   //400
+                                attack: 0,  //0
+                                ranged: 0,  //0
+                                heal: 0,    //0
+                                tough: 0,   //0
+                                total: 1000,
+                            };
+                            TState.CreepBodyTierCriteria[TState.TechLevelKeys[i]]["transporter"] = {
+                                work: 0,    //0
+                                move: 8,    //400
+                                carry: 12,  //600
+                                attack: 0,  //0
+                                ranged: 0,  //0
+                                heal: 0,    //0
+                                tough: 0,   //0
+                                total: 1000,
+                            };
+                            TState.CreepBodyTierCriteria[TState.TechLevelKeys[i]]["builder"] = {
+                                work: 5,    //500
+                                move: 4,    //200
+                                carry: 6,   //300
+                                attack: 0,  //0
+                                ranged: 0,  //0
+                                heal: 0,    //0
+                                tough: 0,   //0 
+                                total: 1000,
+                            };
+                            TState.CreepBodyTierCriteria[TState.TechLevelKeys[i]]["melee"] = {
+                                work: 0,    //0
+                                move: 4,    //200
+                                carry: 0,   //0
+                                attack: 5,  //400
+                                ranged: 0,  //0
+                                heal: 0,    //0
+                                tough: 40,   //400
+                                total: 1000,
+                            };
+                            TState.CreepBodyTierCriteria[TState.TechLevelKeys[i]]["ranged"] = {
+                                work: 0,     //0
+                                move: 4,     //200
+                                carry: 0,    //0
+                                attack: 0,   //0
+                                ranged: 3,   //450
+                                heal: 0,     //0
+                                tough: 35,   //350
+                                total: 1000,
+                            };
+                            TState.CreepBodyTierCriteria[TState.TechLevelKeys[i]]["healer"] = {
+                                work: 0,    //0
+                                move: 3,    //150
+                                carry: 0,   //0
+                                attack: 0,  //0
+                                ranged: 0,  //0
+                                heal: 3,    //750
+                                tough: 20,  //100
+                                total: 1000,
+                            };
+                        break;
+                        case "TIER2":
+                            TState.CreepBodyTierCriteria[TState.TechLevelKeys[i]]["harvester"] = {
+                                work: 2,    //200
+                                move: 2,    //100
+                                carry: 4,   //200
+                                attack: 0,  //0
+                                ranged: 0,  //0
+                                heal: 0,    //0
+                                tough: 0,   //0
+                                total: 500,
+                            };
+                            TState.CreepBodyTierCriteria[TState.TechLevelKeys[i]]["transporter"] = {
+                                work: 0,    //0
+                                move: 4,    //200
+                                carry: 6,   //300
+                                attack: 0,  //0
+                                ranged: 0,  //0
+                                heal: 0,    //0
+                                tough: 0,   //0
+                                total: 500,
+                            };
+                            TState.CreepBodyTierCriteria[TState.TechLevelKeys[i]]["builder"] = {
+                                work: 2,    //200
+                                move: 4,    //200
+                                carry: 2,   //100
+                                attack: 0,  //0
+                                ranged: 0,  //0
+                                heal: 0,    //0
+                                tough: 0,   //0 
+                                total: 500,
+                            };
+                            TState.CreepBodyTierCriteria[TState.TechLevelKeys[i]]["melee"] = {
+                                work: 0,    //0
+                                move: 4,    //200
+                                carry: 0,   //0
+                                attack: 2,  //160
+                                ranged: 0,  //0
+                                heal: 0,    //0
+                                tough: 14,   //140
+                                total: 500,
+                            };
+                            TState.CreepBodyTierCriteria[TState.TechLevelKeys[i]]["ranged"] = {
+                                work: 0,    //0
+                                move: 4,    //200
+                                carry: 0,   //0
+                                attack: 0,  //0
+                                ranged: 1,  //150
+                                heal: 0,    //0
+                                tough: 15,   //150 
+                                total: 500,
+                            };
+                            TState.CreepBodyTierCriteria[TState.TechLevelKeys[i]]["healer"] = {
+                                work: 0,    //0
+                                move: 3,    //150
+                                carry: 0,   //0
+                                attack: 0,  //0
+                                ranged: 0,  //0
+                                heal: 1,    //250
+                                tough: 10,  //100
+                                total: 500,
+                            };
+                        break;
+                        case "TIER3":
+                            TState.CreepBodyTierCriteria[TState.TechLevelKeys[i]]["harvester"] = {
+                                work: 2,    //200
+                                move: 2,    //100
+                                carry: 4,   //200
+                                attack: 0,  //0
+                                ranged: 0,  //0
+                                heal: 0,    //0
+                                tough: 0,   //0
+                                total: 500,
+                            };
+                            TState.CreepBodyTierCriteria[TState.TechLevelKeys[i]]["transporter"] = {
+                                work: 0,    //0
+                                move: 4,    //200
+                                carry: 6,   //300
+                                attack: 0,  //0
+                                ranged: 0,  //0
+                                heal: 0,    //0
+                                tough: 0,   //0
+                                total: 500,
+                            };
+                            TState.CreepBodyTierCriteria[TState.TechLevelKeys[i]]["builder"] = {
+                                work: 2,    //200
+                                move: 4,    //200
+                                carry: 2,   //100
+                                attack: 0,  //0
+                                ranged: 0,  //0
+                                heal: 0,    //0
+                                tough: 0,   //0 
+                                total: 500,
+                            };
+                            TState.CreepBodyTierCriteria[TState.TechLevelKeys[i]]["melee"] = {
+                                work: 0,    //0
+                                move: 4,    //200
+                                carry: 0,   //0
+                                attack: 2,  //160
+                                ranged: 0,  //0
+                                heal: 0,    //0
+                                tough: 14,   //140
+                                total: 500,
+                            };
+                            TState.CreepBodyTierCriteria[TState.TechLevelKeys[i]]["ranged"] = {
+                                work: 0,    //0
+                                move: 4,    //200
+                                carry: 0,   //0
+                                attack: 0,  //0
+                                ranged: 1,  //150
+                                heal: 0,    //0
+                                tough: 15,   //150 
+                                total: 500,
+                            };
+                            TState.CreepBodyTierCriteria[TState.TechLevelKeys[i]]["healer"] = {
+                                work: 0,    //0
+                                move: 3,    //150
+                                carry: 0,   //0
+                                attack: 0,  //0
+                                ranged: 0,  //0
+                                heal: 1,    //250
+                                tough: 10,  //100
+                                total: 500,
+                            };
+                        break;
+                        case "TIER4":
+                            TState.CreepBodyTierCriteria[TState.TechLevelKeys[i]]["harvester"] = {
+                                work: 2,    //200
+                                move: 2,    //100
+                                carry: 4,   //200
+                                attack: 0,  //0
+                                ranged: 0,  //0
+                                heal: 0,    //0
+                                tough: 0,   //0
+                                total: 500,
+                            };
+                            TState.CreepBodyTierCriteria[TState.TechLevelKeys[i]]["transporter"] = {
+                                work: 0,    //0
+                                move: 4,    //200
+                                carry: 6,   //300
+                                attack: 0,  //0
+                                ranged: 0,  //0
+                                heal: 0,    //0
+                                tough: 0,   //0
+                                total: 500,
+                            };
+                            TState.CreepBodyTierCriteria[TState.TechLevelKeys[i]]["builder"] = {
+                                work: 2,    //200
+                                move: 4,    //200
+                                carry: 2,   //100
+                                attack: 0,  //0
+                                ranged: 0,  //0
+                                heal: 0,    //0
+                                tough: 0,   //0 
+                                total: 500,
+                            };
+                            TState.CreepBodyTierCriteria[TState.TechLevelKeys[i]]["melee"] = {
+                                work: 0,    //0
+                                move: 4,    //200
+                                carry: 0,   //0
+                                attack: 2,  //160
+                                ranged: 0,  //0
+                                heal: 0,    //0
+                                tough: 14,   //140
+                                total: 500,
+                            };
+                            TState.CreepBodyTierCriteria[TState.TechLevelKeys[i]]["ranged"] = {
+                                work: 0,    //0
+                                move: 4,    //200
+                                carry: 0,   //0
+                                attack: 0,  //0
+                                ranged: 1,  //150
+                                heal: 0,    //0
+                                tough: 15,   //150 
+                                total: 500,
+                            };
+                            TState.CreepBodyTierCriteria[TState.TechLevelKeys[i]]["healer"] = {
+                                work: 0,    //0
+                                move: 3,    //150
+                                carry: 0,   //0
+                                attack: 0,  //0
+                                ranged: 0,  //0
+                                heal: 1,    //250
+                                tough: 10,  //100
+                                total: 500,
+                            };
+                        break;
+                    }
+                }
+            },
+        }, 
     },
 };
 
@@ -1689,7 +1702,7 @@ let TState = {
 export function loop() {
     //TODO: Trigger Inits based off error flags thrown.
     if (!TState.Preflight) {
-        TState.Init();       
+        TState.Init.InitMain();       
     }    
     
     if (TState.SpawnDelay) {
@@ -1727,37 +1740,11 @@ export function loop() {
             //TState.TestFlag = true;
         }
     }
-    
-
 }
-
 
 //TESTING SNIPPETS
 /*
-    //CreepGroup Tests
-    for (let i = 0; i < TState.CreepGroups["harvester_groups"].length; i++) {
-        console.log(TState.CreepGroups["harvester_groups"][i]);
-    }
-    //console.log(TState.CreepGroups["build_groups"].length);
-    for (let i = 0; i < TState.CreepGroups["build_groups"].length; i++) {
-        console.log(TState.CreepGroups["build_groups"][i]);
-    }
-    //console.log(TState.CreepGroups["defense_groups"].length);
-    for (let i = 0; i < TState.CreepGroups["defense_groups"].length; i++) {
-        console.log(TState.CreepGroups["defense_groups"][i]);
-    }
-    //console.log(TState.CreepGroups["attack_groups"].length);
-    for (let i = 0; i < TState.CreepGroups["attack_groups"].length; i++) {
-        console.log(TState.CreepGroups["attack_groups"][i]);
-    }
-
-
-    //Group tier Criteria tests
-    //console.log(TState.GroupTierCriteria[TState.TechLevel]["harvester_groups"]);
-    //console.log(TState.GroupTierCriteria[TState.TechLevel]["build_groups"]);
-    //console.log(TState.GroupTierCriteria[TState.TechLevel]["defense_groups"]);
-    //console.log(TState.GroupTierCriteria[TState.TechLevel]["attack_groups"]);
-
-
+    harvester_groups,build_groups,defense_groups,attack_groups
+    console.log(TState.CreepGroups["harvester_groups"][i]);
 */
         
