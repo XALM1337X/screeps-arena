@@ -1,10 +1,12 @@
 import { getObjectsByPrototype } from '/game/utils';
-import { Creep, StructureSpawn, Source, StructureExtension } from '/game/prototypes';
-import { OK, ERR_NOT_IN_RANGE, MOVE, WORK, CARRY, ATTACK, RANGED_ATTACK, HEAL, TOUGH, RESOURCE_ENERGY, TOP, TOP_RIGHT, BOTTOM, BOTTOM_RIGHT, RIGHT, TOP_LEFT, BOTTOM_LEFT, LEFT} from '/game/constants';
-import { utils, arenaInfo } from '/game';
+import { Creep, StructureSpawn, Source, StructureExtension, StructureContainer } from '/game/prototypes';
+import { OK, ERR_FULL, ERR_NOT_ENOUGH_RESOURCES,  ERR_NOT_IN_RANGE, ERR_INVALID_TARGET, MOVE, WORK, CARRY, ATTACK, RANGED_ATTACK, HEAL, TOUGH, RESOURCE_ENERGY, TOP, TOP_RIGHT, BOTTOM, BOTTOM_RIGHT, RIGHT, TOP_LEFT, BOTTOM_LEFT, LEFT} from '/game/constants';
+import { utils, arenaInfo,Visual } from '/game';
 import { getTicks } from '/game/utils';
+import { findClosestByPath } from 'game/utils';
 
 let TState = {
+    visual_debugger: new Visual(10, true),
     IsTutorial: false,
     SpecialBitch: null,
 
@@ -13,11 +15,11 @@ let TState = {
     AvailableEnergy: 0,
     CreepGroupIdTicker: 0,
     CreepIdTicker: 0,
-
+    //World objects
     Objectives: [],
     Spawns:  [],
     CreepGroups: [],
-    Structures: [],
+    StructureList: [],
     ConstructionSites: [],
     Towers: [],
     WorldContainers: [],
@@ -25,17 +27,20 @@ let TState = {
     ModuleReinitList: [],
     Extensions: [],
     Containers: [],
+    RoomSources: [],
 
+    //Creep Triggers
+    NeedContainerScan: false,
+
+    //Queues
     SpawnQueue: [],
     TasksQueue: [],
-
+    
+    //Gametype and state control keys
     GameType: "",    
     TechLevel: "TIER0", 
     TechLevelKeys: ["TIER0", "TIER1", "TIER2", "TIER3", "TIER4"],
-    GameType: ["Capture the Flag","Collect and Control","Spawn and Swamp"],
-    CreepGroupKeys: ["harvester_groups", "defense_groups", "attack_groups", "build_groups","capture_groups"],
-    RoomSources: [],
-
+    GameTypeKeys: ["CTF","CAC","SAS"],
 
     GroupTierCriteria: [],
     CreepBodyTierCriteria: [],   
@@ -56,60 +61,53 @@ let TState = {
     EnemyTowers:[],
     EnemySpawns:[],
     ExitStatus: 0,
-
-    TestFlag : false,
-    //TODO: This will be checked in loop periodically.
     CheckTechUpgradeState:function() {
-        //Will check how many groups we have. 
-        //How many resources we have.
-        //And how long its been since "Max tech groups" numbers reached
     },
 
-
-
     Init: {
-
         InitMain:function() {
-
             TState.Init.InitGameType();
-    
-            if (TState.GameType == "Spawn and Swamp") {            
+            if (TState.GameType == "SAS") {            
                 if (arenaInfo.level == 1) {
                     TState.Init.InitSASSTD();
                 } else if (arenaInfo.level > 1) {
                     TState.Init.InitSASADV();
                 }
-            } else if (TState.GameType == "Collect and Control") {
+            } else if (TState.GameType == "CAC") {
                 if (arenaInfo.level == 1) {
                     TState.Init.InitCACSTD();
                 } else if (arenaInfo.level > 1) {
                     TState.Init.InitCACADV();
                 }
-            } else if (TState.GameType == "Capture the Flag") {
+            } else if (TState.GameType == "CTF") {
                 if (arenaInfo.level == 1) {
                     TState.Init.InitCTFSTD();
                 } else if (arenaInfo.level > 1) {
                     TState.Init.InitCTFADV();
                 }
-            } else {
-                TState.Init.InitTutorial();
-            }
+            } 
             TState.Preflight = true;
         },
         InitGameType:function () {
-            TState.GameType = arenaInfo.name;
+            if (arenaInfo.name == "Spawn and Swamp") {
+                TState.GameType = "SAS";
+            } else if (arenaInfo.name == "Collect and Control") {
+                TState.GameType = "CAC";
+            } else if (arenaInfo.name == "Capture the Flag") { 
+                TState.GameType = "CTF";
+            }
         },
         InitCTFSTD:function() {
-            console.log("TBA.");
+
         },
         InitCTFADV:function() {
-            console.log("TBA.");
+
         },
         InitCACSTD:function() {
-            console.log("TBA.");
+
         },
         InitCACADV:function() {
-            console.log("TBA.");
+
         },
         InitSASSTD:function() {
             TState.Structures.Spawn.InitSpawn();
@@ -118,67 +116,56 @@ let TState = {
             TState.Groups.Creeps.InitCreepBodyTierCriteria();
             TState.Groups.InitGroupTierCriteria();
             TState.Groups.InitGroups();
+            TState.Groups.InitGroupZones();
             TState.Groups.InitCreepWrappers();
             TState.Structures.Spawn.InitSpawnQueue();
+            TState.RunTime.ScanEnemyCreeps();
         },
         InitSASADV:function() {
-            TState.Resources.InitRoomSources();
+            TState.Structures.Spawn.InitSpawn();
             TState.Structures.InitEnergySupply();
+            TState.Structures.Containers.InitContainers();
             TState.Groups.Creeps.InitCreepBodyTierCriteria();
             TState.Creeps.InitSpecialSNSADVCreep();
             TState.Groups.InitGroupTierCriteria();
             TState.Groups.InitGroups();
             TState.Groups.InitCreepWrappers();
             TState.Structures.Spawn.InitSpawnQueue();
-        },
-        InitTutorial:function() {
-            TState.IsTutorial = true
-            TState.Resources.InitRoomSources();
-            TState.Structures.Spawn.InitSpawn();
-            TState.Structures.InitEnergySupply();
-            TState.Groups.Creeps.InitCreepBodyTierCriteria();
-            TState.Groups.InitGroupTierCriteria();
-            TState.Groups.InitGroups();
-            TState.Groups.InitCreepWrappers();
-            TState.Structures.Spawn.InitSpawnQueue();
             TState.RunTime.ScanEnemyCreeps();
-        },
-    
+        },    
     },
-
-
     RunTime : {
         ScanEnemyCreeps:function () {
-            TState.EnemyCreeps = getObjectsByPrototype(Creep).find(i => !i.my);
+            TState.EnemyCreeps = getObjectsByPrototype(Creep).filter(i => !i.my);
         },
-        RunCreepGroupsTutorial:function () {
+        RunCreepGroups:function () {
             for (let key in TState.CreepGroups) {
                 for(let i = 0; i < TState.CreepGroups[key].length; i++) {
+                    TState.RunTime.RunGroupMind(TState.CreepGroups[key][i]);
                     for(let j = 0; j < TState.CreepGroups[key][i].CreepsWrapper.length; j++) {
+                        //console.log(TState.CreepGroups[key][i].CreepsWrapper[j].CreepType);
                         if (TState.CreepGroups[key][i].CreepsWrapper[j].CreepType == "harvester" && TState.CreepGroups[key][i].CreepsWrapper[j].CreepObj) {
                             if(TState.CreepGroups[key][i].CreepsWrapper[j].CreepObj.id) {
-                                TState.RunTime.RunHarvester(TState.CreepGroups[key][i].CreepsWrapper[j])
-                                
                             }
                         } else if (TState.CreepGroups[key][i].CreepsWrapper[j].CreepType == "transporter" && TState.CreepGroups[key][i].CreepsWrapper[j].CreepObj) {
                             if(TState.CreepGroups[key][i].CreepsWrapper[j].CreepObj.id) {
-                                console.log(TState.CreepGroups[key][i].CreepsWrapper[j]);
+                                TState.RunTime.RunTransporter(TState.CreepGroups[key][i].CreepsWrapper[j]);
                             }
                         } else if (TState.CreepGroups[key][i].CreepsWrapper[j].CreepType == "builder" && TState.CreepGroups[key][i].CreepsWrapper[j].CreepObj) {
                             if(TState.CreepGroups[key][i].CreepsWrapper[j].CreepObj.id) {
-                                console.log(TState.CreepGroups[key][i].CreepsWrapper[j]);
+
                             }
                         } else if (TState.CreepGroups[key][i].CreepsWrapper[j].CreepType == "melee" && TState.CreepGroups[key][i].CreepsWrapper[j].CreepObj) {
                             if(TState.CreepGroups[key][i].CreepsWrapper[j].CreepObj.id) {
-                                TState.RunTime.RunAttacker(TState.CreepGroups[key][i].CreepsWrapper[j])
+
                             }
                         } else if (TState.CreepGroups[key][i].CreepsWrapper[j].CreepType == "ranged" && TState.CreepGroups[key][i].CreepsWrapper[j].CreepObj) {
                             if(TState.CreepGroups[key][i].CreepsWrapper[j].CreepObj.id) {
-                                console.log(TState.CreepGroups[key][i].CreepsWrapper[j]);
+
                             }
                         } else if (TState.CreepGroups[key][i].CreepsWrapper[j].CreepType == "healer" && TState.CreepGroups[key][i].CreepsWrapper[j].CreepObj) {
                             if(TState.CreepGroups[key][i].CreepsWrapper[j].CreepObj.id) {
-                                TState.RunTime.RunHealer(TState.CreepGroups[key][i].CreepsWrapper[j])
+
                             }
                         }
                     }
@@ -186,7 +173,27 @@ let TState = {
             }
         },
 
+        RunGroupMind:function(Group) {
+            //TODO:// Lots of group decision tasks here.
+            //console.log(Group);
+
+        },
+
         RunAttacker:function(CreepWrapper) {
+            if (!CreepWrapper.CurrentTarget) {
+                CreepWrapper.CurrentTarget = findClosestByPath(CreepWrapper.CreepObj, TState.EnemyCreeps);
+            } else {    
+                let ret_code = CreepWrapper.CreepObj.attack(CreepWrapper.CurrentTarget);
+                if (ret_code == ERR_NOT_IN_RANGE) {
+                    let ret_code = CreepWrapper.CreepObj.moveTo(CreepWrapper.CurrentTarget); 
+                    if (ret_code != 0) {
+                        console.log("ERROR_RUN_ATTACK_MOVE");
+                    }
+                } else if (ret_code == ERR_INVALID_TARGET) {
+                    CreepWrapper.CurrentTarget = null;
+                }
+            }
+
             
         },
 
@@ -268,6 +275,60 @@ let TState = {
             }
         },
 
+        RunTransporter:function(CreepWrapper) {
+            //TODO: START HERE
+
+            if (CreepWrapper.CreepObj.store[RESOURCE_ENERGY] <= 0) {
+                CreepWrapper.CurrentStatus = "container-search";
+            } else if (CreepWrapper.CreepObj.store[RESOURCE_ENERGY] == CreepWrapper.CreepObj.store.getCapacity(RESOURCE_ENERGY)) {
+                CreepWrapper.CurrentStatus = "spawn-drop";
+            } else if (CreepWrapper.CreepObj.store[RESOURCE_ENERGY] > 0) {
+                CreepWrapper.CurrentStatus = "container-search";
+            }
+
+            if (CreepWrapper.CurrentStatus == "container-search") {
+                if (!CreepWrapper.CurrentTarget) {
+                    CreepWrapper.CurrentTarget = findClosestByPath(CreepWrapper.CreepObj, TState.Containers);
+                    if (CreepWrapper.CurrentTarget == null) {
+                        TState.NeedContainerScan = true;
+                        CreepWrapper.CurrentTarget = null;
+                        if (CreepWrapper.CreepObj.store[RESOURCE_ENERGY] > 0) {
+                            CreepWrapper.CurrentStatus = "spawn-drop";
+                            CreepWrapper.CurrentTarget = null;
+                        }
+                    }
+                } else {
+                    if (CreepWrapper.CreepObj.withdraw(CreepWrapper.CurrentTarget, RESOURCE_ENERGY) == ERR_NOT_IN_RANGE) {
+                        CreepWrapper.CreepObj.moveTo(CreepWrapper.CurrentTarget);
+                    } else if (CreepWrapper.CreepObj.withdraw(CreepWrapper.CurrentTarget, RESOURCE_ENERGY) == ERR_INVALID_TARGET) {
+                        CreepWrapper.CurrentTarget = null;
+                    } else if (CreepWrapper.CreepObj.withdraw(CreepWrapper.CurrentTarget, RESOURCE_ENERGY) == ERR_FULL) {
+                        CreepWrapper.CurrentStatus == "spawn-drop";
+                    } else if (CreepWrapper.CreepObj.withdraw(CreepWrapper.CurrentTarget, RESOURCE_ENERGY) ==ERR_NOT_ENOUGH_RESOURCES) {
+                        TState.NeedContainerScan = true;
+                        CreepWrapper.CurrentTarget = null;
+                        CreepWrapper.CurrentStatus = "spawn-drop";
+                    }
+                }
+            } else if (CreepWrapper.CurrentStatus == "spawn-drop") {
+                if (CreepWrapper.CreepObj.transfer(TState.Spawns[0], RESOURCE_ENERGY) == ERR_NOT_IN_RANGE) {
+                    CreepWrapper.CreepObj.moveTo(TState.Spawns[0]);
+                } else if (CreepWrapper.CreepObj.transfer(TState.Spawns[0], RESOURCE_ENERGY) == ERR_NOT_ENOUGH_RESOURCES) {
+                    CreepWrapper.CurrentStatus = "container-search";
+                    CreepWrapper.CurrentTarget = null;
+                }
+            } else {
+                console.log("transporter: Unkown state");
+                console.log(CreepWrapper.CurrentStatus);
+            }
+
+        },
+
+
+        StateUpdate:function() {
+            TState.Groups.RequeueDeadCreeps();
+            TState.RunTime.ScanEnemyCreeps();
+        },
 
         Utils: {
             getDistance:function(obj1, obj2) {
@@ -333,7 +394,7 @@ let TState = {
                 energy += TState.Spawns[i].store.getUsedCapacity([RESOURCE_ENERGY]);
             }
 
-            if (TState.Extensions && TState.ExitStatus.length > 0) {
+            if (TState.Extensions && TState.Extensions.length > 0) {
                 for (let j = 0; j < TState.Extensions.length; j++) {
                     energy += TState.Extensions[j].store.getUsedCapacity([RESOURCE_ENERGY]);
                 }
@@ -348,31 +409,31 @@ let TState = {
                 TState.Spawns = TState.Spawns.concat(getObjectsByPrototype(StructureSpawn).find(i => i.my));
             },
             InitSpawnQueue:function () {
-                //CreepGroupKeys: ["harvester_groups", "defense_groups", "attack_groups", "build_groups","capture_groups"],
+                //CreepGroupKeys: ["harvester_group", "defense_group", "attack_group", "build_group","capture_group"],
                 
-                for (let i = 0; i < TState.CreepGroups["harvester_groups"].length; i++) {
-                    for (let j = 0; j < TState.CreepGroups["harvester_groups"][i].CreepsWrapper.length; j++) {
-                        TState.SpawnQueue = TState.SpawnQueue.concat(TState.CreepGroups["harvester_groups"][i].CreepsWrapper[j])
+                for (let i = 0; i < TState.CreepGroups["harvester_group"].length; i++) {
+                    for (let j = 0; j < TState.CreepGroups["harvester_group"][i].CreepsWrapper.length; j++) {
+                        TState.SpawnQueue = TState.SpawnQueue.concat(TState.CreepGroups["harvester_group"][i].CreepsWrapper[j])
                     }
                 }
-                for (let i = 0; i < TState.CreepGroups["build_groups"].length; i++) {
-                    for (let j = 0; j < TState.CreepGroups["build_groups"][i].CreepsWrapper.length; j++) {
-                        TState.SpawnQueue = TState.SpawnQueue.concat(TState.CreepGroups["build_groups"][i].CreepsWrapper[j])
+                for (let i = 0; i < TState.CreepGroups["build_group"].length; i++) {
+                    for (let j = 0; j < TState.CreepGroups["build_group"][i].CreepsWrapper.length; j++) {
+                        TState.SpawnQueue = TState.SpawnQueue.concat(TState.CreepGroups["build_group"][i].CreepsWrapper[j])
                     }
                 }
-                for (let i = 0; i < TState.CreepGroups["defense_groups"].length; i++) {
-                    for (let j = 0; j < TState.CreepGroups["defense_groups"][i].CreepsWrapper.length; j++) {
-                        TState.SpawnQueue = TState.SpawnQueue.concat(TState.CreepGroups["defense_groups"][i].CreepsWrapper[j])
+                for (let i = 0; i < TState.CreepGroups["defense_group"].length; i++) {
+                    for (let j = 0; j < TState.CreepGroups["defense_group"][i].CreepsWrapper.length; j++) {
+                        TState.SpawnQueue = TState.SpawnQueue.concat(TState.CreepGroups["defense_group"][i].CreepsWrapper[j])
                     }
                 }
-                for (let i = 0; i < TState.CreepGroups["attack_groups"].length; i++) {
-                    for (let j = 0; j < TState.CreepGroups["attack_groups"][i].CreepsWrapper.length; j++) {
-                        TState.SpawnQueue = TState.SpawnQueue.concat(TState.CreepGroups["attack_groups"][i].CreepsWrapper[j])
+                for (let i = 0; i < TState.CreepGroups["attack_group"].length; i++) {
+                    for (let j = 0; j < TState.CreepGroups["attack_group"][i].CreepsWrapper.length; j++) {
+                        TState.SpawnQueue = TState.SpawnQueue.concat(TState.CreepGroups["attack_group"][i].CreepsWrapper[j])
                     }
                 }
-                for (let i = 0; i < TState.CreepGroups["capture_groups"].length; i++) {
-                    for (let j = 0; j < TState.CreepGroups["capture_groups"][i].CreepsWrapper.length; j++) {
-                        TState.SpawnQueue = TState.SpawnQueue.concat(TState.CreepGroups["capture_groups"][i].CreepsWrapper[j])
+                for (let i = 0; i < TState.CreepGroups["capture_group"].length; i++) {
+                    for (let j = 0; j < TState.CreepGroups["capture_group"][i].CreepsWrapper.length; j++) {
+                        TState.SpawnQueue = TState.SpawnQueue.concat(TState.CreepGroups["capture_group"][i].CreepsWrapper[j])
                     }
                 }
             },
@@ -380,6 +441,9 @@ let TState = {
                 let body = [];
                               
                 if (TState.Structures.Spawn.CanSpawnCreep()) {
+                    for(let i = 0; i < TState.CreepBodyTierCriteria[TState.TechLevel][TState.SpawnQueue[0].CreepType].tough; i++) {
+                        body.push(TOUGH);
+                    }
                     for(let i = 0; i < TState.CreepBodyTierCriteria[TState.TechLevel][TState.SpawnQueue[0].CreepType].move; i++) {
                         body.push(MOVE);
                     }
@@ -398,10 +462,8 @@ let TState = {
                     for(let i = 0; i < TState.CreepBodyTierCriteria[TState.TechLevel][TState.SpawnQueue[0].CreepType].heal; i++) {
                         body.push(HEAL);
                     }
-                    for(let i = 0; i < TState.CreepBodyTierCriteria[TState.TechLevel][TState.SpawnQueue[0].CreepType].tough; i++) {
-                        body.push(TOUGH);
-                    }
-                    //CreepGroupKeys: ["harvester_groups", "defense_groups", "attack_groups", "build_groups","capture_groups"],
+
+                    //CreepGroupKeys: ["harvester_group", "defense_group", "attack_group", "build_group","capture_group"],
 
                     for (let i = 0; i < TState.CreepGroups[TState.SpawnQueue[0].GroupType].length; i++) {
                         if (TState.CreepGroups[TState.SpawnQueue[0].GroupType][i].ID == TState.SpawnQueue[0].GroupId) {
@@ -488,7 +550,14 @@ let TState = {
 
         Containers: {
             InitContainers:function() {
-                TState.Containers = utils.getObjectsByPrototype(StructureContainer);
+                let room_containers = utils.getObjectsByPrototype(StructureContainer);
+                TState.Containers = room_containers.filter(c => c.store.getUsedCapacity(RESOURCE_ENERGY) > 0);
+
+            },
+
+            ScanContainers:function() {
+                let room_containers = utils.getObjectsByPrototype(StructureContainer);
+                TState.Containers = room_containers.filter(c => c.store.getUsedCapacity(RESOURCE_ENERGY) > 0);
             }
         }
     },
@@ -503,318 +572,465 @@ let TState = {
     },
 
     Groups: {
-        InitGroupTierCriteria:function () {
-            //CreepGroupKey: ["harvester_groups", "defense_groups", "attack_groups", "build_groups","capture_groups"]
 
-            if (TState.IsTutorial) {
-                if (!TState.GroupTierCriteria["TIER0"]) {
-                    TState.GroupTierCriteria["TIER0"] = [];
-                }
-                TState.GroupTierCriteria["TIER0"]["harvester_groups"] = {
-                    total_groups: 1,
-                    total_creeps: 0,
-                    harvester_creeps: 1,
-                    transport_creeps: 0,
-                };
-                TState.GroupTierCriteria["TIER0"]["build_groups"] = {
-                    total_groups: 0,
-                    total_creeps: 0,
-                    builder_creeps: 0,
-                };
-                TState.GroupTierCriteria["TIER0"]["defense_groups"] = {
-                    total_groups: 1,
-                    total_creeps: 2,
-                    melee_creeps: 1,
-                    ranged_creeps: 0,
-                    healer_creeps: 1,
-                };
-                TState.GroupTierCriteria["TIER0"]["attack_groups"] = {
-                    total_groups: 0,
-                    total_creeps: 0,
-                    melee_creeps: 0,
-                    ranged_creeps: 0,
-                    healer_creeps: 0,
-                };
-                TState.GroupTierCriteria["TIER0"]["capture_groups"] = {
-                    total_groups: 0,
-                };
-            } else {
-                for (let i = 0; i < TState.TechLevelKeys.length; i++) {                
-                    if (!TState.GroupTierCriteria[TState.TechLevelKeys[i]]) {
-                        TState.GroupTierCriteria[TState.TechLevelKeys[i]] = [];
-                    }
-                    switch (TState.TechLevelKeys[i]) {
-                        case "TIER0":
-                            TState.GroupTierCriteria[TState.TechLevelKeys[i]]["harvester_groups"] = {
-                                total_groups: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                                total_creeps: ("Spawn and Swamp" == TState.GameType) ? 2 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 2,
-                                harvester_creeps: ("Spawn and Swamp" == TState.GameType) ? 0 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                                transport_creeps: ("Spawn and Swamp" == TState.GameType) ? 2 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                            };
-                            TState.GroupTierCriteria[TState.TechLevelKeys[i]]["build_groups"] = {
-                                total_groups: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                                total_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                                builder_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                            };
-                            TState.GroupTierCriteria[TState.TechLevelKeys[i]]["defense_groups"] = {
-                                total_groups: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                                total_creeps: ("Spawn and Swamp" == TState.GameType) ? 3 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 3,
-                                melee_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                                ranged_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                                healer_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                            };
-                            TState.GroupTierCriteria[TState.TechLevelKeys[i]]["attack_groups"] = {
-                                total_groups: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 0,
-                                total_creeps: ("Spawn and Swamp" == TState.GameType) ? 4 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 0,
-                                melee_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 0,
-                                ranged_creeps: ("Spawn and Swamp" == TState.GameType) ? 2 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 0,
-                                healer_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 0,
-                            };
-                            TState.GroupTierCriteria[TState.TechLevelKeys[i]]["capture_groups"] = {
-                                total_groups: ("Spawn and Swamp" == TState.GameType) ? 0 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 0,
-                            };
-    
-    
-                        break;
-                        case "TIER1":
-                            TState.GroupTierCriteria[TState.TechLevelKeys[i]]["harvester_groups"] = {
-                                total_groups: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                                total_creeps: ("Spawn and Swamp" == TState.GameType) ? 4 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 2,
-                                harvester_creeps: ("Spawn and Swamp" == TState.GameType) ? 0 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                                transport_creeps: ("Spawn and Swamp" == TState.GameType) ? 2 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                            };
-                            TState.GroupTierCriteria[TState.TechLevelKeys[i]]["build_groups"] = {
-                                total_groups: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                                total_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                                builder_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                            };
-                            TState.GroupTierCriteria[TState.TechLevelKeys[i]]["defense_groups"] = {
-                                total_groups: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                                total_creeps: ("Spawn and Swamp" == TState.GameType) ? 3 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 3,
-                                melee_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                                ranged_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                                healer_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                            };
-                            TState.GroupTierCriteria[TState.TechLevelKeys[i]]["attack_groups"] = {
-                                total_groups: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 0,
-                                total_creeps: ("Spawn and Swamp" == TState.GameType) ? 4 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 0,
-                                melee_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 0,
-                                ranged_creeps: ("Spawn and Swamp" == TState.GameType) ? 2 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 0,
-                                healer_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 0,
-                            };
-                            TState.GroupTierCriteria[TState.TechLevelKeys[i]]["capture_groups"] = {
-                                total_groups: ("Spawn and Swamp" == TState.GameType) ? 0 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 0,
-                            };
-                        break;
-                        case "TIER2":
-                            TState.GroupTierCriteria[TState.TechLevelKeys[i]]["harvester_groups"] = {
-                                total_groups: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                                total_creeps: ("Spawn and Swamp" == TState.GameType) ? 4 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 2,
-                                harvester_creeps: ("Spawn and Swamp" == TState.GameType) ? 0 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                                transport_creeps: ("Spawn and Swamp" == TState.GameType) ? 2 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                            };
-                            TState.GroupTierCriteria[TState.TechLevelKeys[i]]["build_groups"] = {
-                                total_groups: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                                total_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                                builder_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                            };
-                            TState.GroupTierCriteria[TState.TechLevelKeys[i]]["defense_groups"] = {
-                                total_groups: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                                total_creeps: ("Spawn and Swamp" == TState.GameType) ? 3 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 3,
-                                melee_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                                ranged_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                                healer_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                            };
-                            TState.GroupTierCriteria[TState.TechLevelKeys[i]]["attack_groups"] = {
-                                total_groups: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 0,
-                                total_creeps: ("Spawn and Swamp" == TState.GameType) ? 4 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 0,
-                                melee_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 0,
-                                ranged_creeps: ("Spawn and Swamp" == TState.GameType) ? 2 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 0,
-                                healer_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 0,
-                            };
-                            TState.GroupTierCriteria[TState.TechLevelKeys[i]]["capture_groups"] = {
-                                total_groups: ("Spawn and Swamp" == TState.GameType) ? 0 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 0,
-                            };
-                        break;
-                        case "TIER3":
-                            TState.GroupTierCriteria[TState.TechLevelKeys[i]]["harvester_groups"] = {
-                                total_groups: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                                total_creeps: ("Spawn and Swamp" == TState.GameType) ? 4 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 2,
-                                harvester_creeps: ("Spawn and Swamp" == TState.GameType) ? 0 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                                transport_creeps: ("Spawn and Swamp" == TState.GameType) ? 2 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                            };
-                            TState.GroupTierCriteria[TState.TechLevelKeys[i]]["build_groups"] = {
-                                total_groups: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                                total_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                                builder_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                            };
-                            TState.GroupTierCriteria[TState.TechLevelKeys[i]]["defense_groups"] = {
-                                total_groups: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                                total_creeps: ("Spawn and Swamp" == TState.GameType) ? 3 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 3,
-                                melee_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                                ranged_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                                healer_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                            };
-                            TState.GroupTierCriteria[TState.TechLevelKeys[i]]["attack_groups"] = {
-                                total_groups: ("Spawn and Swamp" == TState.GameType) ? 5 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 0,
-                                total_creeps: ("Spawn and Swamp" == TState.GameType) ? 4 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 0,
-                                melee_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 0,
-                                ranged_creeps: ("Spawn and Swamp" == TState.GameType) ? 2 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 0,
-                                healer_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 0,
-                            };
-                            TState.GroupTierCriteria[TState.TechLevelKeys[i]]["capture_groups"] = {
-                                total_groups: ("Spawn and Swamp" == TState.GameType) ? 0 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 0,
-                            };
-                        break;
-                        case "TIER4":
-                            TState.GroupTierCriteria[TState.TechLevelKeys[i]]["harvester_groups"] = {
-                                total_groups: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                                total_creeps: ("Spawn and Swamp" == TState.GameType) ? 4 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 2,
-                                harvester_creeps: ("Spawn and Swamp" == TState.GameType) ? 0 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                                transport_creeps: ("Spawn and Swamp" == TState.GameType) ? 2 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                            };
-                            TState.GroupTierCriteria[TState.TechLevelKeys[i]]["build_groups"] = {
-                                total_groups: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                                total_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                                builder_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                            };
-                            TState.GroupTierCriteria[TState.TechLevelKeys[i]]["defense_groups"] = {
-                                total_groups: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                                total_creeps: ("Spawn and Swamp" == TState.GameType) ? 3 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 3,
-                                melee_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                                ranged_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                                healer_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 1,
-                            };
-                            TState.GroupTierCriteria[TState.TechLevelKeys[i]]["attack_groups"] = {
-                                total_groups: ("Spawn and Swamp" == TState.GameType) ? 10 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 0,
-                                total_creeps: ("Spawn and Swamp" == TState.GameType) ? 4 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 0,
-                                melee_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 0,
-                                ranged_creeps: ("Spawn and Swamp" == TState.GameType) ? 2 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 0,
-                                healer_creeps: ("Spawn and Swamp" == TState.GameType) ? 1 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 0,
-                            };
-                            TState.GroupTierCriteria[TState.TechLevelKeys[i]]["capture_groups"] = {
-                                total_groups: ("Spawn and Swamp" == TState.GameType) ? 0 : ("Collect and Control" == TState.GameType) ? 0 : ("Capture the Flag" == TState.GameType) ? 0 : 0,
-                            };
-                        break;
-                    }
-                      
-                }
+        InitGroupZones:function() {
+            for (let key in TState.CreepGroups) {
+                for (let i = 0; i < TState.CreepGroups[key].length; i++) {
+                    TState.Groups.InitGroupZonePosition(TState.CreepGroups[key][i]);
+                }                
             }
-            
         },
+        InitGroupZonePosition:function(Group) {
+            //harvester_group,defense_group,attack_group,build_group,capture_group
+            switch (Group.Type) {
+                case "harvester_group":                    
+                    TState.Groups.InitHarvesterGroupZonePosition(Group);
+                    break;
+                case "attack_group":
+                    TState.Groups.InitAttackGroupZonePosition(Group);
+                    break;
+                case "defense_group":
+                    break;
+                case "build_group":
+                    break;
+                case "capture_group":
+                    break;
 
+            }
+        },
+        InitHarvesterGroupZonePosition:function(Group) {
+            
+            Group.Zone.CenterPos.x = TState.Spawns[0].x;
+            Group.Zone.CenterPos.y = TState.Spawns[0].y;
+            Group.Zone.TopLeftPos.x= TState.Spawns[0].x-2;
+            Group.Zone.TopLeftPos.y= TState.Spawns[0].y-2;
+            Group.Zone.TopRightPos.x= TState.Spawns[0].x+2;
+            Group.Zone.TopRightPos.y= TState.Spawns[0].y-2;
+            Group.Zone.BottomLeftPos.x= TState.Spawns[0].x-2;
+            Group.Zone.BottomLeftPos.y= TState.Spawns[0].y+2;
+            Group.Zone.BottomRightPos.x=TState.Spawns[0].x+2;
+            Group.Zone.BottomRightPos.y=TState.Spawns[0].y+2;
+
+            TState.visual_debugger.line(Group.Zone.TopLeftPos,Group.Zone.TopRightPos,{color: '#00ff00'});
+            TState.visual_debugger.line(Group.Zone.TopLeftPos,Group.Zone.BottomLeftPos,{color: '#00ff00'});
+            TState.visual_debugger.line(Group.Zone.BottomLeftPos, Group.Zone.BottomRightPos,{color: '#00ff00'});
+            TState.visual_debugger.line(Group.Zone.BottomRightPos, Group.Zone.TopRightPos,{color: '#00ff00'});
+            TState.visual_debugger.line(Group.Zone.TopRightPos, Group.Zone.TopLeftPos,{color: '#00ff00'});
+        },
+        InitAttackGroupZonePosition:function(Group) {
+            
+            Group.Zone.CenterPos.x = TState.Spawns[0].x;
+            Group.Zone.CenterPos.y = TState.Spawns[0].y;
+            Group.Zone.TopLeftPos.x= TState.Spawns[0].x-5;
+            Group.Zone.TopLeftPos.y= TState.Spawns[0].y-5;
+            Group.Zone.TopRightPos.x= TState.Spawns[0].x+5;
+            Group.Zone.TopRightPos.y= TState.Spawns[0].y-5;
+            Group.Zone.BottomLeftPos.x= TState.Spawns[0].x-5;
+            Group.Zone.BottomLeftPos.y= TState.Spawns[0].y+5;
+            Group.Zone.BottomRightPos.x=TState.Spawns[0].x+5;
+            Group.Zone.BottomRightPos.y=TState.Spawns[0].y+5;
+
+
+            TState.visual_debugger.line(Group.Zone.TopLeftPos,Group.Zone.TopRightPos,{color: '#ff0000'});
+            TState.visual_debugger.line(Group.Zone.TopLeftPos,Group.Zone.BottomLeftPos,{color: '#ff0000'});
+            TState.visual_debugger.line(Group.Zone.BottomLeftPos, Group.Zone.BottomRightPos,{color: '#ff0000'});
+            TState.visual_debugger.line(Group.Zone.BottomRightPos, Group.Zone.TopRightPos,{color: '#ff0000'});
+            TState.visual_debugger.line(Group.Zone.TopRightPos, Group.Zone.TopLeftPos,{color: '#ff0000'});
+        },
+        InitGroupTierCriteria:function () {
+            //CreepGroupKey: ["harvester_group", "defense_group", "attack_group", "build_group","capture_group"]
+            for (let i = 0; i < TState.TechLevelKeys.length; i++) {                
+                if (!TState.GroupTierCriteria[TState.TechLevelKeys[i]]) {
+                    TState.GroupTierCriteria[TState.TechLevelKeys[i]] = [];
+                }
+                switch (TState.TechLevelKeys[i]) {
+                    case "TIER0":
+                        TState.GroupTierCriteria[TState.TechLevelKeys[i]]["harvester_group"] = {
+                            total_groups: ("SAS" == TState.GameType) ? 1 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 1,
+                            total_creeps: ("SAS" == TState.GameType) ? 3 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 2,
+                            harvester_creeps: ("SAS" == TState.GameType) ? 0 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 1,
+                            transport_creeps: ("SAS" == TState.GameType) ? 3 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 1,
+                        };
+                        TState.GroupTierCriteria[TState.TechLevelKeys[i]]["build_group"] = {
+                            total_groups: ("SAS" == TState.GameType) ? 0 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 1,
+                            total_creeps: ("SAS" == TState.GameType) ? 0 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 1,
+                            builder_creeps: ("SAS" == TState.GameType) ? 0 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 1,
+                        };
+                        TState.GroupTierCriteria[TState.TechLevelKeys[i]]["defense_group"] = {
+                            total_groups: ("SAS" == TState.GameType) ? 0 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 1,
+                            total_creeps: ("SAS" == TState.GameType) ? 0 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 3,
+                            melee_creeps: ("SAS" == TState.GameType) ? 0 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 1,
+                            ranged_creeps: ("SAS" == TState.GameType) ? 0 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 1,
+                            healer_creeps: ("SAS" == TState.GameType) ? 0 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 1,
+                        };
+                        TState.GroupTierCriteria[TState.TechLevelKeys[i]]["attack_group"] = {
+                            total_groups: ("SAS" == TState.GameType) ? 1 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 0,
+                            total_creeps: ("SAS" == TState.GameType) ? 3 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 0,
+                            melee_creeps: ("SAS" == TState.GameType) ? 1 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 0,
+                            ranged_creeps: ("SAS" == TState.GameType) ? 1 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 0,
+                            healer_creeps: ("SAS" == TState.GameType) ? 1 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 0,
+                        };
+                        TState.GroupTierCriteria[TState.TechLevelKeys[i]]["capture_group"] = {
+                            total_groups: ("SAS" == TState.GameType) ? 0 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 0,
+                            total_creeps: ("SAS" == TState.GameType) ? 0 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 0,
+                        };
+
+
+                    break;
+                    case "TIER1":
+                        TState.GroupTierCriteria[TState.TechLevelKeys[i]]["harvester_group"] = {
+                            total_groups: ("SAS" == TState.GameType) ? 1 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 1,
+                            total_creeps: ("SAS" == TState.GameType) ? 4 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 2,
+                            harvester_creeps: ("SAS" == TState.GameType) ? 0 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 1,
+                            transport_creeps: ("SAS" == TState.GameType) ? 2 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 1,
+                        };
+                        TState.GroupTierCriteria[TState.TechLevelKeys[i]]["build_group"] = {
+                            total_groups: ("SAS" == TState.GameType) ? 1 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 1,
+                            total_creeps: ("SAS" == TState.GameType) ? 1 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 1,
+                            builder_creeps: ("SAS" == TState.GameType) ? 1 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 1,
+                        };
+                        TState.GroupTierCriteria[TState.TechLevelKeys[i]]["defense_group"] = {
+                            total_groups: ("SAS" == TState.GameType) ? 1 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 1,
+                            total_creeps: ("SAS" == TState.GameType) ? 3 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 3,
+                            melee_creeps: ("SAS" == TState.GameType) ? 1 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 1,
+                            ranged_creeps: ("SAS" == TState.GameType) ? 1 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 1,
+                            healer_creeps: ("SAS" == TState.GameType) ? 1 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 1,
+                        };
+                        TState.GroupTierCriteria[TState.TechLevelKeys[i]]["attack_group"] = {
+                            total_groups: ("SAS" == TState.GameType) ? 1 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 0,
+                            total_creeps: ("SAS" == TState.GameType) ? 4 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 0,
+                            melee_creeps: ("SAS" == TState.GameType) ? 1 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 0,
+                            ranged_creeps: ("SAS" == TState.GameType) ? 2 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 0,
+                            healer_creeps: ("SAS" == TState.GameType) ? 1 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 0,
+                        };
+                        TState.GroupTierCriteria[TState.TechLevelKeys[i]]["capture_group"] = {
+                            total_groups: ("SAS" == TState.GameType) ? 0 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 0,
+                        };
+                    break;
+                    case "TIER2":
+                        TState.GroupTierCriteria[TState.TechLevelKeys[i]]["harvester_group"] = {
+                            total_groups: ("SAS" == TState.GameType) ? 1 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 1,
+                            total_creeps: ("SAS" == TState.GameType) ? 4 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 2,
+                            harvester_creeps: ("SAS" == TState.GameType) ? 0 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 1,
+                            transport_creeps: ("SAS" == TState.GameType) ? 2 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 1,
+                        };
+                        TState.GroupTierCriteria[TState.TechLevelKeys[i]]["build_group"] = {
+                            total_groups: ("SAS" == TState.GameType) ? 1 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 1,
+                            total_creeps: ("SAS" == TState.GameType) ? 1 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 1,
+                            builder_creeps: ("SAS" == TState.GameType) ? 1 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 1,
+                        };
+                        TState.GroupTierCriteria[TState.TechLevelKeys[i]]["defense_group"] = {
+                            total_groups: ("SAS" == TState.GameType) ? 1 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 1,
+                            total_creeps: ("SAS" == TState.GameType) ? 3 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 3,
+                            melee_creeps: ("SAS" == TState.GameType) ? 1 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 1,
+                            ranged_creeps: ("SAS" == TState.GameType) ? 1 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 1,
+                            healer_creeps: ("SAS" == TState.GameType) ? 1 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 1,
+                        };
+                        TState.GroupTierCriteria[TState.TechLevelKeys[i]]["attack_group"] = {
+                            total_groups: ("SAS" == TState.GameType) ? 1 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 0,
+                            total_creeps: ("SAS" == TState.GameType) ? 4 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 0,
+                            melee_creeps: ("SAS" == TState.GameType) ? 1 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 0,
+                            ranged_creeps: ("SAS" == TState.GameType) ? 2 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 0,
+                            healer_creeps: ("SAS" == TState.GameType) ? 1 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 0,
+                        };
+                        TState.GroupTierCriteria[TState.TechLevelKeys[i]]["capture_group"] = {
+                            total_groups: ("SAS" == TState.GameType) ? 0 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 0,
+                        };
+                    break;
+                    case "TIER3":
+                        TState.GroupTierCriteria[TState.TechLevelKeys[i]]["harvester_group"] = {
+                            total_groups: ("SAS" == TState.GameType) ? 1 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 1,
+                            total_creeps: ("SAS" == TState.GameType) ? 4 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 2,
+                            harvester_creeps: ("SAS" == TState.GameType) ? 0 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 1,
+                            transport_creeps: ("SAS" == TState.GameType) ? 2 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 1,
+                        };
+                        TState.GroupTierCriteria[TState.TechLevelKeys[i]]["build_group"] = {
+                            total_groups: ("SAS" == TState.GameType) ? 1 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 1,
+                            total_creeps: ("SAS" == TState.GameType) ? 1 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 1,
+                            builder_creeps: ("SAS" == TState.GameType) ? 1 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 1,
+                        };
+                        TState.GroupTierCriteria[TState.TechLevelKeys[i]]["defense_group"] = {
+                            total_groups: ("SAS" == TState.GameType) ? 1 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 1,
+                            total_creeps: ("SAS" == TState.GameType) ? 3 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 3,
+                            melee_creeps: ("SAS" == TState.GameType) ? 1 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 1,
+                            ranged_creeps: ("SAS" == TState.GameType) ? 1 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 1,
+                            healer_creeps: ("SAS" == TState.GameType) ? 1 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 1,
+                        };
+                        TState.GroupTierCriteria[TState.TechLevelKeys[i]]["attack_group"] = {
+                            total_groups: ("SAS" == TState.GameType) ? 5 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 0,
+                            total_creeps: ("SAS" == TState.GameType) ? 4 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 0,
+                            melee_creeps: ("SAS" == TState.GameType) ? 1 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 0,
+                            ranged_creeps: ("SAS" == TState.GameType) ? 2 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 0,
+                            healer_creeps: ("SAS" == TState.GameType) ? 1 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 0,
+                        };
+                        TState.GroupTierCriteria[TState.TechLevelKeys[i]]["capture_group"] = {
+                            total_groups: ("SAS" == TState.GameType) ? 0 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 0,
+                        };
+                    break;
+                    case "TIER4":
+                        TState.GroupTierCriteria[TState.TechLevelKeys[i]]["harvester_group"] = {
+                            total_groups: ("SAS" == TState.GameType) ? 1 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 1,
+                            total_creeps: ("SAS" == TState.GameType) ? 4 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 2,
+                            harvester_creeps: ("SAS" == TState.GameType) ? 0 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 1,
+                            transport_creeps: ("SAS" == TState.GameType) ? 2 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 1,
+                        };
+                        TState.GroupTierCriteria[TState.TechLevelKeys[i]]["build_group"] = {
+                            total_groups: ("SAS" == TState.GameType) ? 1 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 1,
+                            total_creeps: ("SAS" == TState.GameType) ? 1 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 1,
+                            builder_creeps: ("SAS" == TState.GameType) ? 1 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 1,
+                        };
+                        TState.GroupTierCriteria[TState.TechLevelKeys[i]]["defense_group"] = {
+                            total_groups: ("SAS" == TState.GameType) ? 1 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 1,
+                            total_creeps: ("SAS" == TState.GameType) ? 3 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 3,
+                            melee_creeps: ("SAS" == TState.GameType) ? 1 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 1,
+                            ranged_creeps: ("SAS" == TState.GameType) ? 1 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 1,
+                            healer_creeps: ("SAS" == TState.GameType) ? 1 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 1,
+                        };
+                        TState.GroupTierCriteria[TState.TechLevelKeys[i]]["attack_group"] = {
+                            total_groups: ("SAS" == TState.GameType) ? 10 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 0,
+                            total_creeps: ("SAS" == TState.GameType) ? 4 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 0,
+                            melee_creeps: ("SAS" == TState.GameType) ? 1 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 0,
+                            ranged_creeps: ("SAS" == TState.GameType) ? 2 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 0,
+                            healer_creeps: ("SAS" == TState.GameType) ? 1 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 0,
+                        };
+                        TState.GroupTierCriteria[TState.TechLevelKeys[i]]["capture_group"] = {
+                            total_groups: ("SAS" == TState.GameType) ? 0 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 0,
+                        };
+                    break;
+                }
+                    
+            }            
+        },
         InitGroups:function () {
             TState.Groups.ScanGroups();
         },
-
         InitCreepWrappers:function() {
             TState.Groups.ScanGroupsCreepWrappers();
         },
-
         ScanGroups:function() {            
 
-            if (!TState.CreepGroups["harvester_groups"]) {
-                TState.CreepGroups["harvester_groups"] = [];
+            if (!TState.CreepGroups["harvester_group"]) {
+                TState.CreepGroups["harvester_group"] = [];
             }
                        
-                if (TState.CreepGroups["harvester_groups"].length < TState.GroupTierCriteria[TState.TechLevel]["harvester_groups"].total_groups) {
-                    for (let j = TState.CreepGroups["harvester_groups"].length; j < TState.GroupTierCriteria[TState.TechLevel]["harvester_groups"].total_groups; j++) {
-                        let new_group = {
-                            ID: "harvester_groups"+"-"+TState.CreepGroupIdTicker,
-                            CreepsWrapper:[],
-                            GroupObjectives:[],
-                            
-                        }                 
-                        TState.CreepGroups["harvester_groups"].push(new_group);
-                        TState.CreepGroupIdTicker++;
-                    }
-                }
-            
-
-            if (!TState.CreepGroups["build_groups"]) {
-                TState.CreepGroups["build_groups"] = [];
-            }
-
-            if (TState.CreepGroups["build_groups"].length < TState.GroupTierCriteria[TState.TechLevel]["build_groups"].total_groups) {
-                for (let j = TState.CreepGroups["build_groups"].length; j < TState.GroupTierCriteria[TState.TechLevel]["build_groups"].total_groups; j++) {
+            if (TState.CreepGroups["harvester_group"].length < TState.GroupTierCriteria[TState.TechLevel]["harvester_group"].total_groups) {
+                for (let j = TState.CreepGroups["harvester_group"].length; j < TState.GroupTierCriteria[TState.TechLevel]["harvester_group"].total_groups; j++) {
                     let new_group = {
-                        ID: "build_groups"+"-"+TState.CreepGroupIdTicker,
+                        ID: "harvester_group"+"-"+TState.CreepGroupIdTicker,
+                        Type: "harvester_group",
+                        CurrentGroupLeader: null,
                         CreepsWrapper:[],
                         GroupObjectives:[],
+                        Zone: {
+                            CenterPos:{
+                                x : 0,
+                                y : 0,
+                            },
+                            TopLeftPos:{
+                                x : 0,
+                                y : 0,
+                            },
+                            TopRightPos:{
+                                x : 0,
+                                y : 0,
+                            },
+                            BottomLeftPos:{
+                                x : 0,
+                                y : 0,
+                            },
+                            BottomRightPos:{
+                                x : 0,
+                                y : 0,
+                            },
+                        },
+                        
                         
                     }                 
-                    TState.CreepGroups["build_groups"].push(new_group);
+                    TState.CreepGroups["harvester_group"].push(new_group);
                     TState.CreepGroupIdTicker++;
                 }
-            }
-
-            if (!TState.CreepGroups["defense_groups"]) {
-                TState.CreepGroups["defense_groups"] = [];
-            }
-
-            if (TState.CreepGroups["defense_groups"].length < TState.GroupTierCriteria[TState.TechLevel]["defense_groups"].total_groups) {
-                for (let i = TState.CreepGroups["defense_groups"].length; i < TState.GroupTierCriteria[TState.TechLevel]["defense_groups"].total_groups; i++) {
-                    let new_group = {
-                        ID: "defense_groups"+"-"+TState.CreepGroupIdTicker,
-                        CreepsWrapper:[],
-                        GroupObjectives:[],
-                    }                 
-                    TState.CreepGroups["defense_groups"].push(new_group);
-                    TState.CreepGroupIdTicker++;
-                }
-            }
-
-            if (!TState.CreepGroups["attack_groups"]) {
-                TState.CreepGroups["attack_groups"] = [];
             }
             
-            if (TState.CreepGroups["attack_groups"].length < TState.GroupTierCriteria[TState.TechLevel]["attack_groups"].total_groups) {
-                for (let i = TState.CreepGroups["attack_groups"].length; i < TState.GroupTierCriteria[TState.TechLevel]["attack_groups"].total_groups; i++) {
+
+            if (!TState.CreepGroups["build_group"]) {
+                TState.CreepGroups["build_group"] = [];
+            }
+
+            if (TState.CreepGroups["build_group"].length < TState.GroupTierCriteria[TState.TechLevel]["build_group"].total_groups) {
+                for (let j = TState.CreepGroups["build_group"].length; j < TState.GroupTierCriteria[TState.TechLevel]["build_group"].total_groups; j++) {
                     let new_group = {
-                        ID: "attack_groups"+"-"+TState.CreepGroupIdTicker,
+                        ID: "build_group"+"-"+TState.CreepGroupIdTicker,
+                        Type: "build_group",
+                        CurrentGroupLeader: null,
                         CreepsWrapper:[],
                         GroupObjectives:[],
+                        Zone: {
+                            CenterPos:{
+                                x : 0,
+                                y : 0,
+                            },
+                            TopLeftPos:{
+                                x : 0,
+                                y : 0,
+                            },
+                            TopRightPos:{
+                                x : 0,
+                                y : 0,
+                            },
+                            BottomLeftPos:{
+                                x : 0,
+                                y : 0,
+                            },
+                            BottomRightPos:{
+                                x : 0,
+                                y : 0,
+                            },
+                        },
+                        
                     }                 
-                    TState.CreepGroups["attack_groups"].push(new_group);
+                    TState.CreepGroups["build_group"].push(new_group);
+                    TState.CreepGroupIdTicker++;
+                }
+            }
+
+            if (!TState.CreepGroups["defense_group"]) {
+                TState.CreepGroups["defense_group"] = [];
+            }
+
+            if (TState.CreepGroups["defense_group"].length < TState.GroupTierCriteria[TState.TechLevel]["defense_group"].total_groups) {
+                for (let i = TState.CreepGroups["defense_group"].length; i < TState.GroupTierCriteria[TState.TechLevel]["defense_group"].total_groups; i++) {
+                    let new_group = {
+                        ID: "defense_group"+"-"+TState.CreepGroupIdTicker,
+                        Type: "defense_group",
+                        CurrentGroupLeader: null,
+                        CreepsWrapper:[],
+                        GroupObjectives:[],
+                        Zone: {
+                            CenterPos:{
+                                x : 0,
+                                y : 0,
+                            },
+                            TopLeftPos:{
+                                x : 0,
+                                y : 0,
+                            },
+                            TopRightPos:{
+                                x : 0,
+                                y : 0,
+                            },
+                            BottomLeftPos:{
+                                x : 0,
+                                y : 0,
+                            },
+                            BottomRightPos:{
+                                x : 0,
+                                y : 0,
+                            },
+                        },
+                    }                 
+                    TState.CreepGroups["defense_group"].push(new_group);
+                    TState.CreepGroupIdTicker++;
+                }
+            }
+
+            if (!TState.CreepGroups["attack_group"]) {
+                TState.CreepGroups["attack_group"] = [];
+            }
+            
+            if (TState.CreepGroups["attack_group"].length < TState.GroupTierCriteria[TState.TechLevel]["attack_group"].total_groups) {
+                for (let i = TState.CreepGroups["attack_group"].length; i < TState.GroupTierCriteria[TState.TechLevel]["attack_group"].total_groups; i++) {
+                    let new_group = {
+                        ID: "attack_group"+"-"+TState.CreepGroupIdTicker,
+                        Type: "attack_group",
+                        CurrentGroupLeader: null,
+                        CreepsWrapper:[],
+                        GroupObjectives:[],
+                        Zone: {
+                            CenterPos:{
+                                x : 0,
+                                y : 0,
+                            },
+                            TopLeftPos:{
+                                x : 0,
+                                y : 0,
+                            },
+                            TopRightPos:{
+                                x : 0,
+                                y : 0,
+                            },
+                            BottomLeftPos:{
+                                x : 0,
+                                y : 0,
+                            },
+                            BottomRightPos:{
+                                x : 0,
+                                y : 0,
+                            },
+                        },
+                    }                 
+                    TState.CreepGroups["attack_group"].push(new_group);
                     TState.CreepGroupIdTicker++;
                 }
             }  
 
-            if (!TState.CreepGroups["capture_groups"]) {
-                TState.CreepGroups["capture_groups"] = [];
+            if (!TState.CreepGroups["capture_group"]) {
+                TState.CreepGroups["capture_group"] = [];
             }
             
-            if (TState.CreepGroups["capture_groups"].length < TState.GroupTierCriteria[TState.TechLevel]["capture_groups"].total_groups) {
-                for (let i = TState.CreepGroups["capture_groups"].length; i < TState.GroupTierCriteria[TState.TechLevel]["capture_groups"].total_groups; i++) {
+            if (TState.CreepGroups["capture_group"].length < TState.GroupTierCriteria[TState.TechLevel]["capture_group"].total_groups) {
+                for (let i = TState.CreepGroups["capture_group"].length; i < TState.GroupTierCriteria[TState.TechLevel]["capture_group"].total_groups; i++) {
                     let new_group = {
-                        ID: "capture_groups"+"-"+TState.CreepGroupIdTicker,
+                        ID: "capture_group"+"-"+TState.CreepGroupIdTicker,
+                        Type: "capture_group",
+                        CurrentGroupLeader: null,
                         CreepsWrapper:[],
                         GroupObjectives:[],
+                        Zone: {
+                            CenterPos:{
+                                x : 0,
+                                y : 0,
+                            },
+                            TopLeftPos:{
+                                x : 0,
+                                y : 0,
+                            },
+                            TopRightPos:{
+                                x : 0,
+                                y : 0,
+                            },
+                            BottomLeftPos:{
+                                x : 0,
+                                y : 0,
+                            },
+                            BottomRightPos:{
+                                x : 0,
+                                y : 0,
+                            },
+                        },
                     }                 
-                    TState.CreepGroups["capture_groups"].push(new_group);
+                    TState.CreepGroups["capture_group"].push(new_group);
                     TState.CreepGroupIdTicker++;
                 }
             }
         },
-
         ScanGroupsCreepWrappers:function () {
-            //CreepGroupKeys: ["harvester_groups", "defense_groups", "attack_groups", "build_groups","capture_groups"],
+            //CreepGroupKeys: ["harvester_group", "defense_group", "attack_group", "build_group","capture_group"],
             //TODO Add capture groups
 
-            for (let i = 0; i < TState.CreepGroups["harvester_groups"].length; i++) {
-                if (TState.CreepGroups["harvester_groups"][i].CreepsWrapper.length == 0) {
-
-                    for (let j = 0; j < TState.GroupTierCriteria[TState.TechLevel].harvester_groups.harvester_creeps; j++) {
+            for (let i = 0; i < TState.CreepGroups["harvester_group"].length; i++) {
+                if (TState.CreepGroups["harvester_group"][i].CreepsWrapper.length == 0) {
+                    for (let j = 0; j < TState.GroupTierCriteria[TState.TechLevel].harvester_group.harvester_creeps; j++) {
                         let Wrapper = {
                             ID: TState.CreepIdTicker++,
-                            GroupId: TState.CreepGroups["harvester_groups"][i].ID,
-                            GroupType: "harvester_groups",
+                            GroupId: TState.CreepGroups["harvester_group"][i].ID,
+                            GroupType: "harvester_group",
                             CreepType: "harvester",
                             CurrentTarget : null,
                             TargetType : "",
                             CurrentStatus: "",
                             CurrentCollisions: [],
                             DangerCreepCollision: [],
+                            IsGroupLeader: false,
                             AgroRect: {                                
                                 top_left: 0,  
                                 top_right: 0,
@@ -827,20 +1043,21 @@ let TState = {
                             Objectives: [],
 
                         };
-                        TState.CreepGroups["harvester_groups"][i].CreepsWrapper.push(Wrapper);
+                        TState.CreepGroups["harvester_group"][i].CreepsWrapper.push(Wrapper);
                     }  
 
-                    for (let j = 0; j < TState.GroupTierCriteria[TState.TechLevel].harvester_groups.transport_creeps; j++) {
+                    for (let j = 0; j < TState.GroupTierCriteria[TState.TechLevel].harvester_group.transport_creeps; j++) {
                         let Wrapper = {
                             ID: TState.CreepIdTicker++,
-                            GroupId: TState.CreepGroups["harvester_groups"][i].ID,
-                            GroupType: "harvester_groups",
+                            GroupId: TState.CreepGroups["harvester_group"][i].ID,
+                            GroupType: "harvester_group",
                             CreepType: "transporter",
                             CurrentTarget : null,
                             TargetType : "",
                             CurrentStatus: "",
                             CurrentCollisions: [],
                             DangerCreepCollision: [],
+                            IsGroupLeader: false,
                             AgroRect: {                                
                                 top_left: 0,  
                                 top_right: 0,
@@ -852,33 +1069,34 @@ let TState = {
                             CreepObj: null,
                             Objectives: [],
                         };
-                        TState.CreepGroups["harvester_groups"][i].CreepsWrapper.push(Wrapper);
+                        TState.CreepGroups["harvester_group"][i].CreepsWrapper.push(Wrapper);
                     }                       
 
-                } else if (TState.CreepGroups["harvester_groups"][i].CreepsWrapper.length > 0) {
+                } else if (TState.CreepGroups["harvester_group"][i].CreepsWrapper.length > 0) {
                     let harvester_total = 0;
                     let transport_total = 0;
                     
-                    for (let j = 0; j <TState.CreepGroups["harvester_groups"][i].CreepsWrapper.length; j++) {
-                        if (TState.CreepGroups["harvester_groups"][i].CreepsWrapper[j].CreepType == "harvester") {
+                    for (let j = 0; j <TState.CreepGroups["harvester_group"][i].CreepsWrapper.length; j++) {
+                        if (TState.CreepGroups["harvester_group"][i].CreepsWrapper[j].CreepType == "harvester") {
                             harvester_total++;
                         }
-                        if (TState.CreepGroups["harvester_groups"][i].CreepsWrapper[j].CreepType == "transporter") {
+                        if (TState.CreepGroups["harvester_group"][i].CreepsWrapper[j].CreepType == "transporter") {
                             transport_total++;
                         }
                     }
 
-                    for (let j = harvester_total; j < TState.GroupTierCriteria[TState.TechLevel].harvester_groups.harvester_creeps; j++) {
+                    for (let j = harvester_total; j < TState.GroupTierCriteria[TState.TechLevel].harvester_group.harvester_creeps; j++) {
                         let Wrapper = {
                             ID: TState.CreepIdTicker++,
-                            GroupId: TState.CreepGroups["harvester_groups"][i].ID,
-                            GroupType: "harvester_groups",
+                            GroupId: TState.CreepGroups["harvester_group"][i].ID,
+                            GroupType: "harvester_group",
                             CreepType: "harvester",
                             CurrentTarget : null,
                             TargetType : "",
                             CurrentStatus: "",
                             CurrentCollisions: [],
                             DangerCreepCollision: [],
+                            IsGroupLeader: false,
                             AgroRect: {                                
                                 top_left: 0,  
                                 top_right: 0,
@@ -891,20 +1109,21 @@ let TState = {
                             Objectives: [],
 
                         };
-                        TState.CreepGroups["harvester_groups"][i].CreepsWrapper.push(Wrapper);
+                        TState.CreepGroups["harvester_group"][i].CreepsWrapper.push(Wrapper);
                         
                     }                
-                    for (let j = transport_total; j < TState.GroupTierCriteria[TState.TechLevel].harvester_groups.transport_creeps; j++) {
+                    for (let j = transport_total; j < TState.GroupTierCriteria[TState.TechLevel].harvester_group.transport_creeps; j++) {
                         let Wrapper = {
                             ID: TState.CreepIdTicker++,
-                            GroupId: TState.CreepGroups["harvester_groups"][i].ID,
-                            GroupType: "harvester_groups",
+                            GroupId: TState.CreepGroups["harvester_group"][i].ID,
+                            GroupType: "harvester_group",
                             CreepType: "transporter",
                             CurrentTarget : null,
                             TargetType : "",
                             CurrentStatus: "",
                             CurrentCollisions: [],
                             DangerCreepCollision: [],
+                            IsGroupLeader: false,
                             AgroRect: {                                
                                 top_left: 0,  
                                 top_right: 0,
@@ -916,18 +1135,18 @@ let TState = {
                             CreepObj: null,
                             Objectives: [],
                         };
-                        TState.CreepGroups["harvester_groups"][i].CreepsWrapper.push(Wrapper);
+                        TState.CreepGroups["harvester_group"][i].CreepsWrapper.push(Wrapper);
                     }                                                          
                 }
             }           
             
-            for (let i =0; i < TState.CreepGroups["build_groups"].length; i++) {
-                if (TState.CreepGroups["build_groups"][i].CreepsWrapper.length == 0) {                        
-                    for (let j = 0; j < TState.GroupTierCriteria[TState.TechLevel].build_groups.builder_creeps; j++) {
+            for (let i = 0; i < TState.CreepGroups["build_group"].length; i++) {
+                if (TState.CreepGroups["build_group"][i].CreepsWrapper.length == 0) {                        
+                    for (let j = 0; j < TState.GroupTierCriteria[TState.TechLevel].build_group.builder_creeps; j++) {
                         let Wrapper = {
                             ID: TState.CreepIdTicker++,
-                            GroupId: TState.CreepGroups["build_groups"][i].ID,
-                            GroupType: "build_groups",
+                            GroupId: TState.CreepGroups["build_group"][i].ID,
+                            GroupType: "build_group",
                             CreepType: "builder",
                             CurrentTarget : null,
                             TargetType : "",
@@ -946,25 +1165,27 @@ let TState = {
                             Objectives: [],
 
                         };
-                        TState.CreepGroups["build_groups"][j].CreepsWrapper.push(Wrapper);
+                        TState.CreepGroups["build_group"][j].CreepsWrapper.push(Wrapper);
                     } 
-                } else if (TState.CreepGroups["build_groups"][i].CreepsWrapper.length > 0) {
+                } else if (TState.CreepGroups["build_group"][i].CreepsWrapper.length > 0) {
                     let builder_total = 0;
-                    for (let j = 0; j <TState.CreepGroups["build_groups"][i].CreepsWrapper.length; j++) {
-                        if (TState.CreepGroups["build_groups"][i].CreepsWrapper[j].CreepType == "builder") {
+                    let transport_total = 0;
+                    for (let j = 0; j <TState.CreepGroups["build_group"][i].CreepsWrapper.length; j++) {
+                        if (TState.CreepGroups["build_group"][i].CreepsWrapper[j].CreepType == "builder") {
                             builder_total++;
                         }
                     }
-                    for (let j = transport_total; j < TState.GroupTierCriteria[TState.TechLevel].build_groups.builder_creeps; j++) {
+                    for (let j = transport_total; j < TState.GroupTierCriteria[TState.TechLevel].build_group.builder_creeps; j++) {
                         let Wrapper = {
-                            GroupId: TState.CreepGroups["build_groups"][i].ID,
-                            GroupType: "build_groups",
+                            GroupId: TState.CreepGroups["build_group"][i].ID,
+                            GroupType: "build_group",
                             CreepType: "builder",
                             CurrentTarget : null,
                             TargetType : "",
                             CurrentStatus: "",
                             CurrentCollisions: [],
                             DangerCreepCollision: [],
+                            IsGroupLeader: false,
                             AgroRect: {                                
                                 top_left: 0,  
                                 top_right: 0,
@@ -976,26 +1197,27 @@ let TState = {
                             CreepObj: null,
                             Objectives: [],
                         };
-                        TState.CreepGroups["build_groups"][i].CreepsWrapper.push(Wrapper);
+                        TState.CreepGroups["build_group"][i].CreepsWrapper.push(Wrapper);
                     }
                               
                 }
             }
             
-            for (let i =0; i< TState.CreepGroups["defense_groups"].length; i++) {
-                if (TState.CreepGroups["defense_groups"][i].CreepsWrapper.length == 0) {
+            for (let i = 0; i< TState.CreepGroups["defense_group"].length; i++) {
+                if (TState.CreepGroups["defense_group"][i].CreepsWrapper.length == 0) {
 
-                    for (let k = 0; k < TState.GroupTierCriteria[TState.TechLevel].defense_groups.melee_creeps; k++) {
+                    for (let k = 0; k < TState.GroupTierCriteria[TState.TechLevel].defense_group.melee_creeps; k++) {
                         let Wrapper = {
                             ID: TState.CreepIdTicker++,
-                            GroupId: TState.CreepGroups["defense_groups"][i].ID,
-                            GroupType: "defense_groups",
+                            GroupId: TState.CreepGroups["defense_group"][i].ID,
+                            GroupType: "defense_group",
                             CreepType: "melee",
                             CurrentTarget : null,
                             TargetType : "",
                             CurrentStatus: "",
                             CurrentCollisions: [],
                             DangerCreepCollision: [],
+                            IsGroupLeader: false,
                             AgroRect: {                                
                                 top_left: 0,  
                                 top_right: 0,
@@ -1008,20 +1230,21 @@ let TState = {
                             Objectives: [],
 
                         };
-                        TState.CreepGroups["defense_groups"][i].CreepsWrapper.push(Wrapper);
+                        TState.CreepGroups["defense_group"][i].CreepsWrapper.push(Wrapper);
                     }
 
-                    for (let k = 0; k < TState.GroupTierCriteria[TState.TechLevel].defense_groups.ranged_creeps; k++) {
+                    for (let k = 0; k < TState.GroupTierCriteria[TState.TechLevel].defense_group.ranged_creeps; k++) {
                         let Wrapper = {
                             ID: TState.CreepIdTicker++,
-                            GroupId: TState.CreepGroups["defense_groups"][i].ID,
-                            GroupType: "defense_groups",
+                            GroupId: TState.CreepGroups["defense_group"][i].ID,
+                            GroupType: "defense_group",
                             CreepType: "ranged",
                             CurrentTarget : null,
                             TargetType : "",
                             CurrentStatus: "",
                             CurrentCollisions: [],
                             DangerCreepCollision: [],
+                            IsGroupLeader: false,
                             AgroRect: {                                
                                 top_left: 0,  
                                 top_right: 0,
@@ -1034,20 +1257,21 @@ let TState = {
                             Objectives: [],
 
                         };
-                        TState.CreepGroups["defense_groups"][i].CreepsWrapper.push(Wrapper);
+                        TState.CreepGroups["defense_group"][i].CreepsWrapper.push(Wrapper);
                     }
 
-                    for (let k = 0; k < TState.GroupTierCriteria[TState.TechLevel].defense_groups.healer_creeps; k++) {
+                    for (let k = 0; k < TState.GroupTierCriteria[TState.TechLevel].defense_group.healer_creeps; k++) {
                         let Wrapper = {
                             ID: TState.CreepIdTicker++,
-                            GroupId: TState.CreepGroups["defense_groups"][i].ID,
-                            GroupType: "defense_groups",
+                            GroupId: TState.CreepGroups["defense_group"][i].ID,
+                            GroupType: "defense_group",
                             CreepType: "healer",
                             CurrentTarget : null,
                             TargetType : "",
                             CurrentStatus: "",
                             CurrentCollisions: [],
                             DangerCreepCollision: [],
+                            IsGroupLeader: false,
                             AgroRect: {                                
                                 top_left: 0,  
                                 top_right: 0,
@@ -1060,39 +1284,40 @@ let TState = {
                             Objectives: [],
 
                         };
-                        TState.CreepGroups["defense_groups"][i].CreepsWrapper.push(Wrapper);
+                        TState.CreepGroups["defense_group"][i].CreepsWrapper.push(Wrapper);
                     }
 
 
 
-                } else if (TState.CreepGroups["defense_groups"][i].CreepsWrapper.length > 0) {
+                } else if (TState.CreepGroups["defense_group"][i].CreepsWrapper.length > 0) {
                     let melee_total = 0; 
                     let ranged_total = 0; 
                     let healer_total = 0;
-                    for (let j = 0; j < TState.CreepGroups["defense_groups"][i].CreepsWrapper.length; j++) {
-                        if (TState.CreepGroups["defense_groups"][i].CreepsWrapper[j].CreepType == "melee") {
+                    for (let j = 0; j < TState.CreepGroups["defense_group"][i].CreepsWrapper.length; j++) {
+                        if (TState.CreepGroups["defense_group"][i].CreepsWrapper[j].CreepType == "melee") {
                             melee_total++;
                         }
-                        if (TState.CreepGroups["defense_groups"][i].CreepsWrapper[j].CreepType == "ranged") {
+                        if (TState.CreepGroups["defense_group"][i].CreepsWrapper[j].CreepType == "ranged") {
                             ranged_total++;
                         }
-                        if (TState.CreepGroups["defense_groups"][i].CreepsWrapper[j].CreepType == "healer") {
+                        if (TState.CreepGroups["defense_group"][i].CreepsWrapper[j].CreepType == "healer") {
                             healer_total++;
                         }
                     }
 
 
-                    for (let j = melee_total; j < TState.GroupTierCriteria[TState.TechLevel].defense_groups.melee_creeps; j++) {
+                    for (let j = melee_total; j < TState.GroupTierCriteria[TState.TechLevel].defense_group.melee_creeps; j++) {
                         let Wrapper = {
                             ID: TState.CreepIdTicker++,
-                            GroupId: TState.CreepGroups["defense_groups"][i].ID,
-                            GroupType: "defense_groups",
+                            GroupId: TState.CreepGroups["defense_group"][i].ID,
+                            GroupType: "defense_group",
                             CreepType: "melee",
                             CurrentTarget : null,
                             TargetType : "",
                             CurrentStatus: "",
                             CurrentCollisions: [],
                             DangerCreepCollision: [],
+                            IsGroupLeader: false,
                             AgroRect: {                                
                                 top_left: 0,  
                                 top_right: 0,
@@ -1105,19 +1330,20 @@ let TState = {
                             Objectives: [],
 
                         };
-                        TState.CreepGroups["defense_groups"][i].CreepsWrapper.push(Wrapper);
+                        TState.CreepGroups["defense_group"][i].CreepsWrapper.push(Wrapper);
                     }
-                    for (let j = ranged_total; j < TState.GroupTierCriteria[TState.TechLevel].defense_groups.ranged_creeps; j++) {
+                    for (let j = ranged_total; j < TState.GroupTierCriteria[TState.TechLevel].defense_group.ranged_creeps; j++) {
                         let Wrapper = {
                             ID: TState.CreepIdTicker++,
-                            GroupId: TState.CreepGroups["defense_groups"][i].ID,
-                            GroupType: "defense_groups",
+                            GroupId: TState.CreepGroups["defense_group"][i].ID,
+                            GroupType: "defense_group",
                             CreepType: "ranged",
                             CurrentTarget : null,
                             TargetType : "",
                             CurrentStatus: "",
                             CurrentCollisions: [],
                             DangerCreepCollision: [],
+                            IsGroupLeader: false,
                             AgroRect: {                                
                                 top_left: 0,  
                                 top_right: 0,
@@ -1130,19 +1356,20 @@ let TState = {
                             Objectives: [],
 
                         };
-                        TState.CreepGroups["defense_groups"][i].CreepsWrapper.push(Wrapper);
+                        TState.CreepGroups["defense_group"][i].CreepsWrapper.push(Wrapper);
                     }
-                    for (let j = healer_total; j < TState.GroupTierCriteria[TState.TechLevel].defense_groups.healer_creeps; j++) {
+                    for (let j = healer_total; j < TState.GroupTierCriteria[TState.TechLevel].defense_group.healer_creeps; j++) {
                         let Wrapper = {
                             ID: TState.CreepIdTicker++,
-                            GroupId: TState.CreepGroups["defense_groups"][i].ID,
-                            GroupType: "defense_groups",
+                            GroupId: TState.CreepGroups["defense_group"][i].ID,
+                            GroupType: "defense_group",
                             CreepType: "healer",
                             CurrentTarget : null,
                             TargetType : "",
                             CurrentStatus: "",
                             CurrentCollisions: [],
                             DangerCreepCollision: [],
+                            IsGroupLeader: false,
                             AgroRect: {                                
                                 top_left: 0,  
                                 top_right: 0,
@@ -1155,24 +1382,25 @@ let TState = {
                             Objectives: [],
 
                         };
-                        TState.CreepGroups["defense_groups"][i].CreepsWrapper.push(Wrapper);
+                        TState.CreepGroups["defense_group"][i].CreepsWrapper.push(Wrapper);
                     }
                 }
             }
 
-            for (let i =0; i < TState.CreepGroups["attack_groups"].length; i++) {
-                if (TState.CreepGroups["attack_groups"][i].CreepsWrapper.length == 0) {
-                    for (let j = 0; j < TState.GroupTierCriteria[TState.TechLevel].attack_groups.melee_creeps; j++) {
+            for (let i = 0; i < TState.CreepGroups["attack_group"].length; i++) {
+                if (TState.CreepGroups["attack_group"][i].CreepsWrapper.length == 0) {
+                    for (let j = 0; j < TState.GroupTierCriteria[TState.TechLevel].attack_group.melee_creeps; j++) {
                         let Wrapper = {
                             ID: TState.CreepIdTicker++,
-                            GroupId: TState.CreepGroups["attack_groups"][i].ID,
-                            GroupType: "attack_groups",
+                            GroupId: TState.CreepGroups["attack_group"][i].ID,
+                            GroupType: "attack_group",
                             CreepType: "melee",
                             CurrentTarget : null,
                             TargetType : "",
                             CurrentStatus: "",
                             CurrentCollisions: [],
                             DangerCreepCollision: [],
+                            IsGroupLeader: false,
                             AgroRect: {                                
                                 top_left: 0,  
                                 top_right: 0,
@@ -1185,19 +1413,20 @@ let TState = {
                             Objectives: [],
 
                         };
-                        TState.CreepGroups["attack_groups"][i].CreepsWrapper.push(Wrapper);
+                        TState.CreepGroups["attack_group"][i].CreepsWrapper.push(Wrapper);
                     }
-                    for (let j = 0; j < TState.GroupTierCriteria[TState.TechLevel].attack_groups.ranged_creeps; j++) {
+                    for (let j = 0; j < TState.GroupTierCriteria[TState.TechLevel].attack_group.ranged_creeps; j++) {
                         let Wrapper = {
                             ID: TState.CreepIdTicker++,
-                            GroupId: TState.CreepGroups["attack_groups"][i].ID,
-                            GroupType: "attack_groups",
+                            GroupId: TState.CreepGroups["attack_group"][i].ID,
+                            GroupType: "attack_group",
                             CreepType: "ranged",
                             CurrentTarget : null,
                             TargetType : "",
                             CurrentStatus: "",
                             CurrentCollisions: [],
                             DangerCreepCollision: [],
+                            IsGroupLeader: false,
                             AgroRect: {                                
                                 top_left: 0,  
                                 top_right: 0,
@@ -1210,19 +1439,20 @@ let TState = {
                             Objectives: [],
 
                         };
-                        TState.CreepGroups["attack_groups"][i].CreepsWrapper.push(Wrapper);
+                        TState.CreepGroups["attack_group"][i].CreepsWrapper.push(Wrapper);
                     }
-                    for (let j = 0; j < TState.GroupTierCriteria[TState.TechLevel].attack_groups.healer_creeps; j++) {
+                    for (let j = 0; j < TState.GroupTierCriteria[TState.TechLevel].attack_group.healer_creeps; j++) {
                         let Wrapper = {
                             ID: TState.CreepIdTicker++,
-                            GroupId: TState.CreepGroups["attack_groups"][i].ID,
-                            GroupType: "attack_groups",
+                            GroupId: TState.CreepGroups["attack_group"][i].ID,
+                            GroupType: "attack_group",
                             CreepType: "healer",
                             CurrentTarget : null,
                             TargetType : "",
                             CurrentStatus: "",
                             CurrentCollisions: [],
                             DangerCreepCollision: [],
+                            IsGroupLeader: false,
                             AgroRect: {                                
                                 top_left: 0,  
                                 top_right: 0,
@@ -1235,37 +1465,38 @@ let TState = {
                             Objectives: [],
 
                         };
-                        TState.CreepGroups["attack_groups"][i].CreepsWrapper.push(Wrapper);
+                        TState.CreepGroups["attack_group"][i].CreepsWrapper.push(Wrapper);
                     }
 
-                } else if (TState.CreepGroups["attack_groups"][i].CreepsWrapper.length > 0) {
+                } else if (TState.CreepGroups["attack_group"][i].CreepsWrapper.length > 0) {
                     let melee_total = 0;
                     let ranged_total = 0; 
                     let healer_total = 0; 
-                    for (let j = 0; j <TState.CreepGroups["attack_groups"][i].CreepsWrapper.length; j++) {
-                        if (TState.CreepGroups["attack_groups"][i].CreepsWrapper[j].CreepType == "melee") {
+                    for (let j = 0; j <TState.CreepGroups["attack_group"][i].CreepsWrapper.length; j++) {
+                        if (TState.CreepGroups["attack_group"][i].CreepsWrapper[j].CreepType == "melee") {
                             melee_total++;
                         }
-                        if (TState.CreepGroups["attack_groups"][i].CreepsWrapper[j].CreepType == "ranged") {
+                        if (TState.CreepGroups["attack_group"][i].CreepsWrapper[j].CreepType == "ranged") {
                             ranged_total++;
                         }
-                        if (TState.CreepGroups["attack_groups"][i].CreepsWrapper[j].CreepType == "healer") {
+                        if (TState.CreepGroups["attack_group"][i].CreepsWrapper[j].CreepType == "healer") {
                             healer_total++;
                         }
                     }
 
 
-                    for (let j = melee_total; j < TState.GroupTierCriteria[TState.TechLevel].attack_groups.melee_creeps; j++) {
+                    for (let j = melee_total; j < TState.GroupTierCriteria[TState.TechLevel].attack_group.melee_creeps; j++) {
                         let Wrapper = {
                             ID: TState.CreepIdTicker++,
-                            GroupId: TState.CreepGroups["attack_groups"][j].ID,
-                            GroupType: "attack_groups",
+                            GroupId: TState.CreepGroups["attack_group"][j].ID,
+                            GroupType: "attack_group",
                             CreepType: "melee",
                             CurrentTarget : null,
                             TargetType : "",
                             CurrentStatus: "",
                             CurrentCollisions: [],
                             DangerCreepCollision: [],
+                            IsGroupLeader: false,
                             AgroRect: {                                
                                 top_left: 0,  
                                 top_right: 0,
@@ -1277,19 +1508,20 @@ let TState = {
                             CreepObj: null,
                             Objectives: [],
                         };
-                        TState.CreepGroups["attack_groups"][j].CreepsWrapper.push(Wrapper);
+                        TState.CreepGroups["attack_group"][j].CreepsWrapper.push(Wrapper);
                     }
-                    for (let j = ranged_total; j < TState.GroupTierCriteria[TState.TechLevel].attack_groups.ranged_creeps; j++) {
+                    for (let j = ranged_total; j < TState.GroupTierCriteria[TState.TechLevel].attack_group.ranged_creeps; j++) {
                         let Wrapper = {
                             ID: TState.CreepIdTicker++,
-                            GroupId: TState.CreepGroups["attack_groups"][j].ID,
-                            GroupType: "attack_groups",
+                            GroupId: TState.CreepGroups["attack_group"][j].ID,
+                            GroupType: "attack_group",
                             CreepType: "ranged",
                             CurrentTarget : null,
                             TargetType : "",
                             CurrentStatus: "",
                             CurrentCollisions: [],
                             DangerCreepCollision: [],
+                            IsGroupLeader: false,
                             AgroRect: {                                
                                 top_left: 0,  
                                 top_right: 0,
@@ -1301,19 +1533,20 @@ let TState = {
                             CreepObj: null,
                             Objectives: [],
                         };
-                        TState.CreepGroups["attack_groups"][j].CreepsWrapper.push(Wrapper);
+                        TState.CreepGroups["attack_group"][j].CreepsWrapper.push(Wrapper);
                     }
-                    for (let j = healer_total; j < TState.GroupTierCriteria[TState.TechLevel].attack_groups.healer_creeps; j++) {
+                    for (let j = healer_total; j < TState.GroupTierCriteria[TState.TechLevel].attack_group.healer_creeps; j++) {
                         let Wrapper = {
                             ID: TState.CreepIdTicker++,
-                            GroupId: TState.CreepGroups["attack_groups"][j].ID,
-                            GroupType: "attack_groups",
+                            GroupId: TState.CreepGroups["attack_group"][j].ID,
+                            GroupType: "attack_group",
                             CreepType: "healer",
                             CurrentTarget : null,
                             TargetType : "",
                             CurrentStatus: "",
                             CurrentCollisions: [],
                             DangerCreepCollision: [],
+                            IsGroupLeader: false,
                             AgroRect: {                                
                                 top_left: 0,  
                                 top_right: 0,
@@ -1325,25 +1558,45 @@ let TState = {
                             CreepObj: null,
                             Objectives: [],
                         };
-                        TState.CreepGroups["attack_groups"][j].CreepsWrapper.push(Wrapper);
+                        TState.CreepGroups["attack_group"][j].CreepsWrapper.push(Wrapper);
                     }
 
                 }
             }            
-        },   
+        },
+        RequeueDeadCreeps:function () {
+            for (let key in TState.CreepGroups) {
+                for(let i = 0; i < TState.CreepGroups[key].length; i++) {
+                    for(let j = 0; j < TState.CreepGroups[key][i].CreepsWrapper.length; j++) {
+                        if (!TState.CreepGroups[key][i].CreepsWrapper[j].CreepObj && !TState.SpawnQueue.find(ele => ele.ID === TState.CreepGroups[key][i].CreepsWrapper[j].ID)) {
+                            TState.SpawnQueue = TState.SpawnQueue.concat(TState.CreepGroups[key][i].CreepsWrapper[j]);
+                        }
+                    }
+                }
+            }
+        },
+        ScanGroupLeader:function(Group) {
+            if (!Group.CurrentGroupLeader) {
+                
+            } 
+        },
+        RepositionGroupZone:function(Group) {
+
+        },        
         Creeps: {
 
             /*
             let Wrapper = {
                 ID: TState.CreepIdTicker++,
-                GroupId: TState.CreepGroups["harvester_groups"][i].ID,
-                GroupType: "harvester_groups",
+                GroupId: TState.CreepGroups["harvester_group"][i].ID,
+                GroupType: "harvester_group",
                 CreepType: "harvester",
                 CurrentTarget : null,
                 TargetType : "",
                 CurrentStatus: "",
                 CurrentCollisions: [],
                 DangerCreepCollision: [],
+                IsGroupLeader: false,
                 AgroRect: {
                     
                     
@@ -1383,8 +1636,8 @@ let TState = {
                         case "TIER0":
                             TState.CreepBodyTierCriteria[TState.TechLevelKeys[i]]["harvester"] = {
                                 work: 2,    //200
-                                move: 2,    //100
-                                carry: 4,   //200
+                                move: 3,    //150
+                                carry: 3,   //150
                                 attack: 0,  //0
                                 ranged: 0,  //0
                                 heal: 0,    //0
@@ -1393,13 +1646,13 @@ let TState = {
                             };
                             TState.CreepBodyTierCriteria[TState.TechLevelKeys[i]]["transporter"] = {
                                 work: 0,    //0
-                                move: 4,    //200
-                                carry: 6,   //300
+                                move: 2,    //100
+                                carry: 1,   //50
                                 attack: 0,  //0
                                 ranged: 0,  //0
                                 heal: 0,    //0
                                 tough: 0,   //0
-                                total: 500,
+                                total: 150,
                             };
                             TState.CreepBodyTierCriteria[TState.TechLevelKeys[i]]["builder"] = {
                                 work: 2,    //200
@@ -1413,33 +1666,33 @@ let TState = {
                             };
                             TState.CreepBodyTierCriteria[TState.TechLevelKeys[i]]["melee"] = {
                                 work: 0,    //0
-                                move: 4,    //200
+                                move: 6,    //300
                                 carry: 0,   //0
-                                attack: 2,  //160
+                                attack: 7,  //560
                                 ranged: 0,  //0
                                 heal: 0,    //0
-                                tough: 14,   //140
-                                total: 500,
+                                tough: 5,   //40
+                                total: 900,
                             };
                             TState.CreepBodyTierCriteria[TState.TechLevelKeys[i]]["ranged"] = {
                                 work: 0,    //0
-                                move: 4,    //200
+                                move: 6,    //300
                                 carry: 0,   //0
                                 attack: 0,  //0
                                 ranged: 1,  //150
                                 heal: 0,    //0
-                                tough: 15,   //150 
+                                tough: 5,   //50 
                                 total: 500,
                             };
                             TState.CreepBodyTierCriteria[TState.TechLevelKeys[i]]["healer"] = {
                                 work: 0,    //0
-                                move: 3,    //150
+                                move: 6,    //300
                                 carry: 0,   //0
                                 attack: 0,  //0
                                 ranged: 0,  //0
                                 heal: 1,    //250
                                 tough: 10,  //100
-                                total: 500,
+                                total: 650,
                             };
                             
                         break;
@@ -1697,14 +1950,10 @@ let TState = {
         }, 
     },
 };
-
-
 export function loop() {
-    //TODO: Trigger Inits based off error flags thrown.
     if (!TState.Preflight) {
         TState.Init.InitMain();       
     }    
-    
     if (TState.SpawnDelay) {
         if (getTicks() % 20 == 0) {
             TState.SpawnDelay = false;
@@ -1712,39 +1961,13 @@ export function loop() {
         }
     } else {
         TState.Structures.Spawn.PollSpawnQueue();
+    }    
+    if (TState.NeedContainerScan) {
+        TState.Structures.Containers.ScanContainers();
+        TState.NeedContainerScan = false;
     }
-    
-
-
-    if (TState.GameType == "Spawn and Swamp") {            
-        if (arenaInfo.level == 1) {
-            
-        } else if (arenaInfo.level > 1) {
-            
-        }
-    } else if (TState.GameType == "Collect and Control") {
-        if (arenaInfo.level == 1) {
-            
-        } else if (arenaInfo.level > 1) {
-            
-        }
-    } else if (TState.GameType == "Capture the Flag") {
-        if (arenaInfo.level == 1) {
-            
-        } else if (arenaInfo.level > 1) {
-            
-        }
-    } else {
-        if (!TState.TestFlag) {
-            TState.RunTime.RunCreepGroupsTutorial();
-            //TState.TestFlag = true;
-        }
+    if (getTicks() % 30 == 0) {
+        TState.RunTime.StateUpdate();
     }
+    TState.RunTime.RunCreepGroups();    
 }
-
-//TESTING SNIPPETS
-/*
-    harvester_groups,build_groups,defense_groups,attack_groups
-    console.log(TState.CreepGroups["harvester_groups"][i]);
-*/
-        
