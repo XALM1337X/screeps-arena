@@ -6,17 +6,40 @@ import { getTicks } from '/game/utils';
 import { findClosestByPath } from 'game/utils';
 
 let TState = {
-    visual_debugger: new Visual(10, true),
-    IsTutorial: false,
-    SpecialBitch: null,
 
+    //State Properties
+    visual_debugger: new Visual(10, true),
+    //TState.visual_debugger.line(Group.Zone.TopRightPos, Group.Zone.TopLeftPos,{color: '#ff0000'});    
     SpawnDelay: false,
     Preflight: false,
     AvailableEnergy: 0,
     CreepGroupIdTicker: 0,
     CreepIdTicker: 0,
+    GameType: "",    
+    TechLevel: "TIER0", 
+    TechLevelKeys: ["TIER0", "TIER1", "TIER2", "TIER3", "TIER4"],
+    ZoneOffsets: {
+        attack_group: 5,
+        defense_group: 5,
+        harvester_group: 3,
+        build_group: 3,
+    },
+    GameTypeKeys: ["CTF","CAC","SAS"],
+    GroupTierCriteria: [],
+    CreepBodyTierCriteria: [],
+    CreepBodyPartPrices: {
+        Work: 100,
+        Move: 50,
+        Carry: 50,
+        Attack: 80,
+        RangedAttack: 150,
+        Heal: 250,
+        Tough: 10,
+    },
+
+    ExitStatus: 0,
+
     //World objects
-    Objectives: [],
     Spawns:  [],
     CreepGroups: [],
     StructureList: [],
@@ -28,6 +51,10 @@ let TState = {
     Extensions: [],
     Containers: [],
     RoomSources: [],
+    EnemyCreeps:[],
+    EnemyStructures:[],
+    EnemyTowers:[],
+    EnemySpawns:[],
 
     //Creep Triggers
     NeedContainerScan: false,
@@ -35,34 +62,6 @@ let TState = {
     //Queues
     SpawnQueue: [],
     TasksQueue: [],
-    
-    //Gametype and state control keys
-    GameType: "",    
-    TechLevel: "TIER0", 
-    TechLevelKeys: ["TIER0", "TIER1", "TIER2", "TIER3", "TIER4"],
-    GameTypeKeys: ["CTF","CAC","SAS"],
-
-    GroupTierCriteria: [],
-    CreepBodyTierCriteria: [],   
-
-    CreepBodyPartPrices: {
-        Work: 100,
-        Move: 50,
-        Carry: 50,
-        Attack: 80,
-        RangedAttack: 150,
-        Heal: 250,
-        Tough: 10,
-    },
-
-
-    EnemyCreeps:[],
-    EnemyStructures:[],
-    EnemyTowers:[],
-    EnemySpawns:[],
-    ExitStatus: 0,
-    CheckTechUpgradeState:function() {
-    },
 
     Init: {
         InitMain:function() {
@@ -111,6 +110,7 @@ let TState = {
         },
         InitSASSTD:function() {
             TState.Structures.Spawn.InitSpawn();
+            TState.Structures.Spawn.InitEnemySpawn();
             TState.Structures.InitEnergySupply();
             TState.Structures.Containers.InitContainers();
             TState.Groups.Creeps.InitCreepBodyTierCriteria();
@@ -119,10 +119,11 @@ let TState = {
             TState.Groups.InitGroupZones();
             TState.Groups.InitCreepWrappers();
             TState.Structures.Spawn.InitSpawnQueue();
-            TState.RunTime.ScanEnemyCreeps();
+            TState.Groups.Creeps.ScanEnemyCreeps();
         },
         InitSASADV:function() {
             TState.Structures.Spawn.InitSpawn();
+            TState.Structures.Spawn.InitEnemySpawn();
             TState.Structures.InitEnergySupply();
             TState.Structures.Containers.InitContainers();
             TState.Groups.Creeps.InitCreepBodyTierCriteria();
@@ -131,17 +132,14 @@ let TState = {
             TState.Groups.InitGroups();
             TState.Groups.InitCreepWrappers();
             TState.Structures.Spawn.InitSpawnQueue();
-            TState.RunTime.ScanEnemyCreeps();
+            TState.Groups.Creeps.ScanEnemyCreeps();
         },    
     },
     RunTime : {
-        ScanEnemyCreeps:function () {
-            TState.EnemyCreeps = getObjectsByPrototype(Creep).filter(i => !i.my);
-        },
-        RunCreepGroups:function () {
+        RunGroups:function () {
+            TState.visual_debugger.clear();
             for (let key in TState.CreepGroups) {
                 for(let i = 0; i < TState.CreepGroups[key].length; i++) {
-                    TState.RunTime.RunGroupMind(TState.CreepGroups[key][i]);
                     for(let j = 0; j < TState.CreepGroups[key][i].CreepsWrapper.length; j++) {
                         //console.log(TState.CreepGroups[key][i].CreepsWrapper[j].CreepType);
                         if (TState.CreepGroups[key][i].CreepsWrapper[j].CreepType == "harvester" && TState.CreepGroups[key][i].CreepsWrapper[j].CreepObj) {
@@ -169,16 +167,16 @@ let TState = {
                             }
                         }
                     }
+                    TState.RunTime.RunGroupMind(TState.CreepGroups[key][i]);
                 }
             }
         },
-
-        RunGroupMind:function(Group) {
+        RunGroupMind:function(Group) {            
+            TState.Groups.ScanGroupLeader(Group);            
+            TState.Groups.RepositionGroupZone(Group);
+            console.log(Group.CurrentGroupLeader);
             //TODO:// Lots of group decision tasks here.
-            //console.log(Group);
-
         },
-
         RunAttacker:function(CreepWrapper) {
             if (!CreepWrapper.CurrentTarget) {
                 CreepWrapper.CurrentTarget = findClosestByPath(CreepWrapper.CreepObj, TState.EnemyCreeps);
@@ -196,11 +194,9 @@ let TState = {
 
             
         },
-
         RunHealer:function(CreepWrapper) {
             //console.log(CreepWrapper);
         },
-
         RunHarvester:function(CreepWrapper) {
 
             if (!CreepWrapper.CurrentTarget) {
@@ -274,7 +270,6 @@ let TState = {
                 }
             }
         },
-
         RunTransporter:function(CreepWrapper) {
             //TODO: START HERE
 
@@ -323,13 +318,10 @@ let TState = {
             }
 
         },
-
-
         StateUpdate:function() {
             TState.Groups.RequeueDeadCreeps();
-            TState.RunTime.ScanEnemyCreeps();
+            TState.Groups.Creeps.ScanEnemyCreeps();
         },
-
         Utils: {
             getDistance:function(obj1, obj2) {
                 let ydiff = obj2.y - obj1.y;
@@ -382,197 +374,7 @@ let TState = {
             },
         },
     },
-
-
-    Structures: {
-        InitEnergySupply:function() {
-            TState.Structures.ScanEnergySupply();
-        },
-        ScanEnergySupply:function() {
-            let energy = 0;
-            for (let i = 0; i < TState.Spawns.length; i++) {
-                energy += TState.Spawns[i].store.getUsedCapacity([RESOURCE_ENERGY]);
-            }
-
-            if (TState.Extensions && TState.Extensions.length > 0) {
-                for (let j = 0; j < TState.Extensions.length; j++) {
-                    energy += TState.Extensions[j].store.getUsedCapacity([RESOURCE_ENERGY]);
-                }
-            }
-            TState.AvailableEnergy = energy;
-        },
-
-
-        Spawn: {
-            InitSpawn:function() {
-                TState.Spawns = [];
-                TState.Spawns = TState.Spawns.concat(getObjectsByPrototype(StructureSpawn).find(i => i.my));
-            },
-            InitSpawnQueue:function () {
-                //CreepGroupKeys: ["harvester_group", "defense_group", "attack_group", "build_group","capture_group"],
-                
-                for (let i = 0; i < TState.CreepGroups["harvester_group"].length; i++) {
-                    for (let j = 0; j < TState.CreepGroups["harvester_group"][i].CreepsWrapper.length; j++) {
-                        TState.SpawnQueue = TState.SpawnQueue.concat(TState.CreepGroups["harvester_group"][i].CreepsWrapper[j])
-                    }
-                }
-                for (let i = 0; i < TState.CreepGroups["build_group"].length; i++) {
-                    for (let j = 0; j < TState.CreepGroups["build_group"][i].CreepsWrapper.length; j++) {
-                        TState.SpawnQueue = TState.SpawnQueue.concat(TState.CreepGroups["build_group"][i].CreepsWrapper[j])
-                    }
-                }
-                for (let i = 0; i < TState.CreepGroups["defense_group"].length; i++) {
-                    for (let j = 0; j < TState.CreepGroups["defense_group"][i].CreepsWrapper.length; j++) {
-                        TState.SpawnQueue = TState.SpawnQueue.concat(TState.CreepGroups["defense_group"][i].CreepsWrapper[j])
-                    }
-                }
-                for (let i = 0; i < TState.CreepGroups["attack_group"].length; i++) {
-                    for (let j = 0; j < TState.CreepGroups["attack_group"][i].CreepsWrapper.length; j++) {
-                        TState.SpawnQueue = TState.SpawnQueue.concat(TState.CreepGroups["attack_group"][i].CreepsWrapper[j])
-                    }
-                }
-                for (let i = 0; i < TState.CreepGroups["capture_group"].length; i++) {
-                    for (let j = 0; j < TState.CreepGroups["capture_group"][i].CreepsWrapper.length; j++) {
-                        TState.SpawnQueue = TState.SpawnQueue.concat(TState.CreepGroups["capture_group"][i].CreepsWrapper[j])
-                    }
-                }
-            },
-            PollSpawnQueue:function() {
-                let body = [];
-                              
-                if (TState.Structures.Spawn.CanSpawnCreep()) {
-                    for(let i = 0; i < TState.CreepBodyTierCriteria[TState.TechLevel][TState.SpawnQueue[0].CreepType].tough; i++) {
-                        body.push(TOUGH);
-                    }
-                    for(let i = 0; i < TState.CreepBodyTierCriteria[TState.TechLevel][TState.SpawnQueue[0].CreepType].move; i++) {
-                        body.push(MOVE);
-                    }
-                    for(let i = 0; i < TState.CreepBodyTierCriteria[TState.TechLevel][TState.SpawnQueue[0].CreepType].work; i++) {
-                        body.push(WORK);
-                    }
-                    for(let i = 0; i < TState.CreepBodyTierCriteria[TState.TechLevel][TState.SpawnQueue[0].CreepType].carry; i++) {
-                        body.push(CARRY);
-                    }
-                    for(let i = 0; i < TState.CreepBodyTierCriteria[TState.TechLevel][TState.SpawnQueue[0].CreepType].attack; i++) {
-                        body.push(ATTACK);
-                    }
-                    for(let i = 0; i < TState.CreepBodyTierCriteria[TState.TechLevel][TState.SpawnQueue[0].CreepType].ranged; i++) {
-                        body.push(RANGED_ATTACK);
-                    }
-                    for(let i = 0; i < TState.CreepBodyTierCriteria[TState.TechLevel][TState.SpawnQueue[0].CreepType].heal; i++) {
-                        body.push(HEAL);
-                    }
-
-                    //CreepGroupKeys: ["harvester_group", "defense_group", "attack_group", "build_group","capture_group"],
-
-                    for (let i = 0; i < TState.CreepGroups[TState.SpawnQueue[0].GroupType].length; i++) {
-                        if (TState.CreepGroups[TState.SpawnQueue[0].GroupType][i].ID == TState.SpawnQueue[0].GroupId) {
-                            for (let j = 0; j <TState.CreepGroups[TState.SpawnQueue[0].GroupType][i].CreepsWrapper.length; j++) {                                
-                                if (TState.CreepGroups[TState.SpawnQueue[0].GroupType][i].CreepsWrapper[j].ID == TState.SpawnQueue[0].ID && TState.CreepGroups[TState.SpawnQueue[0].GroupType][i].CreepsWrapper[j].CreepType == TState.SpawnQueue[0].CreepType) {                                    
-                                    for (let k = 0; k < TState.Spawns.length; k++) {
-                                            let creep_spawn = TState.Spawns[k].spawnCreep(body);
-                                            if (creep_spawn.error == -4) {
-                                                console.log("SpawnDelayActive: "+creep_spawn.error);
-                                                TState.SpawnDelay = true;
-                                                return;
-                                            } 
-                                            if (creep_spawn.error) {
-                                                //console.log(creep_spawn.error);
-                                                TState.SpawnDelay = true;
-                                                return;
-                                            }
-                                            TState.AvailableEnergy -= TState.CreepBodyTierCriteria[TState.TechLevel][TState.SpawnQueue[0].CreepType].total;
-                                            TState.CreepGroups[TState.SpawnQueue[0].GroupType][i].CreepsWrapper[j].CreepObj = creep_spawn.object;
-                                            TState.SpawnQueue.splice(0,1);
-                                            return;
-                                        
-                                    }
-                                    
-                                }
-                            }
-                        }
-                    }
-
-                } else {                    
-                    //console.log("Not enough energy");
-                    TState.SpawnDelay = true;
-                    
-                }
-                
-            },
-            CanSpawnCreep:function () {
-                TState.Structures.ScanEnergySupply();
-                if (TState.SpawnQueue.length > 0) {
-                    switch (TState.SpawnQueue[0].CreepType) {
-                        
-                        case "harvester":
-                            if (TState.AvailableEnergy >= TState.CreepBodyTierCriteria[TState.TechLevel][TState.SpawnQueue[0].CreepType].total) {
-                                return true;
-                            }
-                        break;
-                        case "transporter":
-                            if (TState.AvailableEnergy >= TState.CreepBodyTierCriteria[TState.TechLevel][TState.SpawnQueue[0].CreepType].total) {
-                                return true;
-                            }
-                        break;
-                        case "builder":
-                            if (TState.AvailableEnergy >= TState.CreepBodyTierCriteria[TState.TechLevel][TState.SpawnQueue[0].CreepType].total) {
-                                return true; 
-                            }
-                        break;
-                        case "melee":
-                            if (TState.AvailableEnergy >= TState.CreepBodyTierCriteria[TState.TechLevel][TState.SpawnQueue[0].CreepType].total) {
-                                return true;
-                            }
-                        break;
-                        case "ranged":
-                            if (TState.AvailableEnergy >= TState.CreepBodyTierCriteria[TState.TechLevel][TState.SpawnQueue[0].CreepType].total) {
-                                return true;
-                            }
-                        break;
-                        case "healer":
-                            if (TState.AvailableEnergy >= TState.CreepBodyTierCriteria[TState.TechLevel][TState.SpawnQueue[0].CreepType].total) {
-                                return true;
-                            }
-                        break;
-                    }
-
-                }
-                return false;
-            },
-        },
-
-        Extensions: {
-            InitExtensions:function() {
-                TState.Extensions = utils.getObjectsByPrototype(StructureExtension).find(i => i.my);
-            },
-        },
-
-        Containers: {
-            InitContainers:function() {
-                let room_containers = utils.getObjectsByPrototype(StructureContainer);
-                TState.Containers = room_containers.filter(c => c.store.getUsedCapacity(RESOURCE_ENERGY) > 0);
-
-            },
-
-            ScanContainers:function() {
-                let room_containers = utils.getObjectsByPrototype(StructureContainer);
-                TState.Containers = room_containers.filter(c => c.store.getUsedCapacity(RESOURCE_ENERGY) > 0);
-            }
-        }
-    },
-    
-
-
-    Resources: {
-        InitRoomSources:function() {
-            TState.RoomSources = [];
-            TState.RoomSources = TState.RoomSources.concat(utils.getObjectsByPrototype(Source));
-        },
-    },
-
     Groups: {
-
         InitGroupZones:function() {
             for (let key in TState.CreepGroups) {
                 for (let i = 0; i < TState.CreepGroups[key].length; i++) {
@@ -590,52 +392,40 @@ let TState = {
                     TState.Groups.InitAttackGroupZonePosition(Group);
                     break;
                 case "defense_group":
+                    //TODO://
                     break;
                 case "build_group":
+                    //TODO://
                     break;
                 case "capture_group":
+                    //TODO://
                     break;
 
             }
         },
-        InitHarvesterGroupZonePosition:function(Group) {
-            
+        InitHarvesterGroupZonePosition:function(Group) {      
             Group.Zone.CenterPos.x = TState.Spawns[0].x;
             Group.Zone.CenterPos.y = TState.Spawns[0].y;
-            Group.Zone.TopLeftPos.x= TState.Spawns[0].x-2;
-            Group.Zone.TopLeftPos.y= TState.Spawns[0].y-2;
-            Group.Zone.TopRightPos.x= TState.Spawns[0].x+2;
-            Group.Zone.TopRightPos.y= TState.Spawns[0].y-2;
-            Group.Zone.BottomLeftPos.x= TState.Spawns[0].x-2;
-            Group.Zone.BottomLeftPos.y= TState.Spawns[0].y+2;
-            Group.Zone.BottomRightPos.x=TState.Spawns[0].x+2;
-            Group.Zone.BottomRightPos.y=TState.Spawns[0].y+2;
-
-            TState.visual_debugger.line(Group.Zone.TopLeftPos,Group.Zone.TopRightPos,{color: '#00ff00'});
-            TState.visual_debugger.line(Group.Zone.TopLeftPos,Group.Zone.BottomLeftPos,{color: '#00ff00'});
-            TState.visual_debugger.line(Group.Zone.BottomLeftPos, Group.Zone.BottomRightPos,{color: '#00ff00'});
-            TState.visual_debugger.line(Group.Zone.BottomRightPos, Group.Zone.TopRightPos,{color: '#00ff00'});
-            TState.visual_debugger.line(Group.Zone.TopRightPos, Group.Zone.TopLeftPos,{color: '#00ff00'});
+            Group.Zone.TopLeftPos.x= TState.Spawns[0].x-TState.ZoneOffsets.harvester_group;
+            Group.Zone.TopLeftPos.y= TState.Spawns[0].y-TState.ZoneOffsets.harvester_group;
+            Group.Zone.TopRightPos.x= TState.Spawns[0].x+TState.ZoneOffsets.harvester_group;
+            Group.Zone.TopRightPos.y= TState.Spawns[0].y-TState.ZoneOffsets.harvester_group;
+            Group.Zone.BottomLeftPos.x= TState.Spawns[0].x-TState.ZoneOffsets.harvester_group;
+            Group.Zone.BottomLeftPos.y= TState.Spawns[0].y+TState.ZoneOffsets.harvester_group;
+            Group.Zone.BottomRightPos.x=TState.Spawns[0].x+TState.ZoneOffsets.harvester_group;
+            Group.Zone.BottomRightPos.y=TState.Spawns[0].y+TState.ZoneOffsets.harvester_group;
         },
-        InitAttackGroupZonePosition:function(Group) {
-            
+        InitAttackGroupZonePosition:function(Group) {          
             Group.Zone.CenterPos.x = TState.Spawns[0].x;
             Group.Zone.CenterPos.y = TState.Spawns[0].y;
-            Group.Zone.TopLeftPos.x= TState.Spawns[0].x-5;
-            Group.Zone.TopLeftPos.y= TState.Spawns[0].y-5;
-            Group.Zone.TopRightPos.x= TState.Spawns[0].x+5;
-            Group.Zone.TopRightPos.y= TState.Spawns[0].y-5;
-            Group.Zone.BottomLeftPos.x= TState.Spawns[0].x-5;
-            Group.Zone.BottomLeftPos.y= TState.Spawns[0].y+5;
-            Group.Zone.BottomRightPos.x=TState.Spawns[0].x+5;
-            Group.Zone.BottomRightPos.y=TState.Spawns[0].y+5;
-
-
-            TState.visual_debugger.line(Group.Zone.TopLeftPos,Group.Zone.TopRightPos,{color: '#ff0000'});
-            TState.visual_debugger.line(Group.Zone.TopLeftPos,Group.Zone.BottomLeftPos,{color: '#ff0000'});
-            TState.visual_debugger.line(Group.Zone.BottomLeftPos, Group.Zone.BottomRightPos,{color: '#ff0000'});
-            TState.visual_debugger.line(Group.Zone.BottomRightPos, Group.Zone.TopRightPos,{color: '#ff0000'});
-            TState.visual_debugger.line(Group.Zone.TopRightPos, Group.Zone.TopLeftPos,{color: '#ff0000'});
+            Group.Zone.TopLeftPos.x= TState.Spawns[0].x-TState.ZoneOffsets.attack_group;
+            Group.Zone.TopLeftPos.y= TState.Spawns[0].y-TState.ZoneOffsets.attack_group;
+            Group.Zone.TopRightPos.x= TState.Spawns[0].x+TState.ZoneOffsets.attack_group;
+            Group.Zone.TopRightPos.y= TState.Spawns[0].y-TState.ZoneOffsets.attack_group;
+            Group.Zone.BottomLeftPos.x= TState.Spawns[0].x-TState.ZoneOffsets.attack_group;
+            Group.Zone.BottomLeftPos.y= TState.Spawns[0].y+TState.ZoneOffsets.attack_group;
+            Group.Zone.BottomRightPos.x=TState.Spawns[0].x+TState.ZoneOffsets.attack_group;
+            Group.Zone.BottomRightPos.y=TState.Spawns[0].y+TState.ZoneOffsets.attack_group;
         },
         InitGroupTierCriteria:function () {
             //CreepGroupKey: ["harvester_group", "defense_group", "attack_group", "build_group","capture_group"]
@@ -1577,14 +1367,62 @@ let TState = {
         },
         ScanGroupLeader:function(Group) {
             if (!Group.CurrentGroupLeader) {
-                
+                for (let i = 0; i < Group.CreepsWrapper.length; i++) {
+                    if (Group.Type == "attack_group" || Group.Type == "defense_group") {
+                        if (Group.CreepsWrapper[i].CreepType == "melee" && Group.CreepsWrapper[i].CreepObj) {
+                            Group.CurrentGroupLeader = Group.CreepsWrapper[i].CreepObj;
+                        }
+                    } else if (Group.Type == "harvester_group" && Group.CreepsWrapper[i].CreepObj) {
+                        if (Group.CreepsWrapper[i].CreepType == "harvester" || Group.CreepsWrapper[i].CreepType == "transporter") {
+                            Group.CurrentGroupLeader = Group.CreepsWrapper[i].CreepObj;
+                        }
+                    } else if (Group.Type == "builder_group" && Group.CreepsWrapper[i].CreepObj) {
+                        if (Group.CreepsWrapper[i].CreepType == "builder") {
+                            Group.CurrentGroupLeader = Group.CreepsWrapper[i].CreepObj;
+                        }
+                    }
+                }                
             } 
         },
         RepositionGroupZone:function(Group) {
-
+            if (Group.CurrentGroupLeader) {
+                if (Group.Type == "attack_group" || Group.Type == "defense_group") {
+                    Group.Zone.CenterPos.x = Group.CurrentGroupLeader.x;
+                    Group.Zone.CenterPos.y = Group.CurrentGroupLeader.y;
+                    Group.Zone.TopLeftPos.x= Group.Zone.CenterPos.x-TState.ZoneOffsets.attack_group;
+                    Group.Zone.TopLeftPos.y= Group.Zone.CenterPos.y-TState.ZoneOffsets.attack_group;
+                    Group.Zone.TopRightPos.x= Group.Zone.CenterPos.x+TState.ZoneOffsets.attack_group;
+                    Group.Zone.TopRightPos.y= Group.Zone.CenterPos.y-TState.ZoneOffsets.attack_group;
+                    Group.Zone.BottomLeftPos.x= Group.Zone.CenterPos.x-TState.ZoneOffsets.attack_group;
+                    Group.Zone.BottomLeftPos.y= Group.Zone.CenterPos.y+TState.ZoneOffsets.attack_group;
+                    Group.Zone.BottomRightPos.x= Group.Zone.CenterPos.x+TState.ZoneOffsets.attack_group;
+                    Group.Zone.BottomRightPos.y= Group.Zone.CenterPos.y+TState.ZoneOffsets.attack_group;
+                } else if (Group.Type == "harvester_group") {
+                    Group.Zone.CenterPos.x = Group.CurrentGroupLeader.x;
+                    Group.Zone.CenterPos.y = Group.CurrentGroupLeader.y;
+                    Group.Zone.TopLeftPos.x= Group.Zone.CenterPos.x-TState.ZoneOffsets.harvester_group;
+                    Group.Zone.TopLeftPos.y= Group.Zone.CenterPos.y-TState.ZoneOffsets.harvester_group;
+                    Group.Zone.TopRightPos.x= Group.Zone.CenterPos.x+TState.ZoneOffsets.harvester_group;
+                    Group.Zone.TopRightPos.y= Group.Zone.CenterPos.y-TState.ZoneOffsets.harvester_group;
+                    Group.Zone.BottomLeftPos.x= Group.Zone.CenterPos.x-TState.ZoneOffsets.harvester_group;
+                    Group.Zone.BottomLeftPos.y= Group.Zone.CenterPos.y+TState.ZoneOffsets.harvester_group;
+                    Group.Zone.BottomRightPos.x= Group.Zone.CenterPos.x+TState.ZoneOffsets.harvester_group;
+                    Group.Zone.BottomRightPos.y= Group.Zone.CenterPos.y+TState.ZoneOffsets.harvester_group;
+                } else if (Group.Type == "builder_group") {
+                    Group.Zone.CenterPos.x = Group.CurrentGroupLeader.x;
+                    Group.Zone.CenterPos.y = Group.CurrentGroupLeader.y;
+                    Group.Zone.TopLeftPos.x= Group.Zone.CenterPos.x-TState.ZoneOffsets.builder_group;
+                    Group.Zone.TopLeftPos.y= Group.Zone.CenterPos.y-TState.ZoneOffsets.builder_group;
+                    Group.Zone.TopRightPos.x= Group.Zone.CenterPos.x+TState.ZoneOffsets.builder_group;
+                    Group.Zone.TopRightPos.y= Group.Zone.CenterPos.y-TState.ZoneOffsets.builder_group;
+                    Group.Zone.BottomLeftPos.x= Group.Zone.CenterPos.x-TState.ZoneOffsets.builder_group;
+                    Group.Zone.BottomLeftPos.y= Group.Zone.CenterPos.y+TState.ZoneOffsets.builder_group;
+                    Group.Zone.BottomRightPos.x= Group.Zone.CenterPos.x+TState.ZoneOffsets.builder_group;
+                    Group.Zone.BottomRightPos.y= Group.Zone.CenterPos.y+TState.ZoneOffsets.builder_group;
+                }
+            }
         },        
         Creeps: {
-
             /*
             let Wrapper = {
                 ID: TState.CreepIdTicker++,
@@ -1947,7 +1785,193 @@ let TState = {
                     }
                 }
             },
+            ScanEnemyCreeps:function () {
+                TState.EnemyCreeps = getObjectsByPrototype(Creep).filter(i => !i.my);
+            },
         }, 
+    },
+    Structures: {
+        InitEnergySupply:function() {
+            TState.Structures.ScanEnergySupply();
+        },
+        ScanEnergySupply:function() {
+            let energy = 0;
+            for (let i = 0; i < TState.Spawns.length; i++) {
+                energy += TState.Spawns[i].store.getUsedCapacity([RESOURCE_ENERGY]);
+            }
+
+            if (TState.Extensions && TState.Extensions.length > 0) {
+                for (let j = 0; j < TState.Extensions.length; j++) {
+                    energy += TState.Extensions[j].store.getUsedCapacity([RESOURCE_ENERGY]);
+                }
+            }
+            TState.AvailableEnergy = energy;
+        },
+        Spawn: {
+            InitSpawn:function() {
+                TState.Spawns = [];
+                TState.Spawns = TState.Spawns.concat(getObjectsByPrototype(StructureSpawn).find(i => i.my));
+            },
+            InitEnemySpawn:function() {
+                TState.EnemySpawns = [];
+                TState.EnemySpawns = TState.EnemySpawns.concat(getObjectsByPrototype(StructureSpawn).find(i => !i.my));
+            },
+            InitSpawnQueue:function () {
+                //CreepGroupKeys: ["harvester_group", "defense_group", "attack_group", "build_group","capture_group"],
+                
+                for (let i = 0; i < TState.CreepGroups["harvester_group"].length; i++) {
+                    for (let j = 0; j < TState.CreepGroups["harvester_group"][i].CreepsWrapper.length; j++) {
+                        TState.SpawnQueue = TState.SpawnQueue.concat(TState.CreepGroups["harvester_group"][i].CreepsWrapper[j])
+                    }
+                }
+                for (let i = 0; i < TState.CreepGroups["build_group"].length; i++) {
+                    for (let j = 0; j < TState.CreepGroups["build_group"][i].CreepsWrapper.length; j++) {
+                        TState.SpawnQueue = TState.SpawnQueue.concat(TState.CreepGroups["build_group"][i].CreepsWrapper[j])
+                    }
+                }
+                for (let i = 0; i < TState.CreepGroups["defense_group"].length; i++) {
+                    for (let j = 0; j < TState.CreepGroups["defense_group"][i].CreepsWrapper.length; j++) {
+                        TState.SpawnQueue = TState.SpawnQueue.concat(TState.CreepGroups["defense_group"][i].CreepsWrapper[j])
+                    }
+                }
+                for (let i = 0; i < TState.CreepGroups["attack_group"].length; i++) {
+                    for (let j = 0; j < TState.CreepGroups["attack_group"][i].CreepsWrapper.length; j++) {
+                        TState.SpawnQueue = TState.SpawnQueue.concat(TState.CreepGroups["attack_group"][i].CreepsWrapper[j])
+                    }
+                }
+                for (let i = 0; i < TState.CreepGroups["capture_group"].length; i++) {
+                    for (let j = 0; j < TState.CreepGroups["capture_group"][i].CreepsWrapper.length; j++) {
+                        TState.SpawnQueue = TState.SpawnQueue.concat(TState.CreepGroups["capture_group"][i].CreepsWrapper[j])
+                    }
+                }
+            },
+            PollSpawnQueue:function() {
+                let body = [];
+                              
+                if (TState.Structures.Spawn.CanSpawnCreep()) {
+                    for(let i = 0; i < TState.CreepBodyTierCriteria[TState.TechLevel][TState.SpawnQueue[0].CreepType].tough; i++) {
+                        body.push(TOUGH);
+                    }
+                    for(let i = 0; i < TState.CreepBodyTierCriteria[TState.TechLevel][TState.SpawnQueue[0].CreepType].move; i++) {
+                        body.push(MOVE);
+                    }
+                    for(let i = 0; i < TState.CreepBodyTierCriteria[TState.TechLevel][TState.SpawnQueue[0].CreepType].work; i++) {
+                        body.push(WORK);
+                    }
+                    for(let i = 0; i < TState.CreepBodyTierCriteria[TState.TechLevel][TState.SpawnQueue[0].CreepType].carry; i++) {
+                        body.push(CARRY);
+                    }
+                    for(let i = 0; i < TState.CreepBodyTierCriteria[TState.TechLevel][TState.SpawnQueue[0].CreepType].attack; i++) {
+                        body.push(ATTACK);
+                    }
+                    for(let i = 0; i < TState.CreepBodyTierCriteria[TState.TechLevel][TState.SpawnQueue[0].CreepType].ranged; i++) {
+                        body.push(RANGED_ATTACK);
+                    }
+                    for(let i = 0; i < TState.CreepBodyTierCriteria[TState.TechLevel][TState.SpawnQueue[0].CreepType].heal; i++) {
+                        body.push(HEAL);
+                    }
+
+                    //CreepGroupKeys: ["harvester_group", "defense_group", "attack_group", "build_group","capture_group"],
+
+                    for (let i = 0; i < TState.CreepGroups[TState.SpawnQueue[0].GroupType].length; i++) {
+                        if (TState.CreepGroups[TState.SpawnQueue[0].GroupType][i].ID == TState.SpawnQueue[0].GroupId) {
+                            for (let j = 0; j <TState.CreepGroups[TState.SpawnQueue[0].GroupType][i].CreepsWrapper.length; j++) {                                
+                                if (TState.CreepGroups[TState.SpawnQueue[0].GroupType][i].CreepsWrapper[j].ID == TState.SpawnQueue[0].ID && TState.CreepGroups[TState.SpawnQueue[0].GroupType][i].CreepsWrapper[j].CreepType == TState.SpawnQueue[0].CreepType) {                                    
+                                    for (let k = 0; k < TState.Spawns.length; k++) {
+                                            let creep_spawn = TState.Spawns[k].spawnCreep(body);
+                                            if (creep_spawn.error == -4) {
+                                                console.log("SpawnDelayActive: "+creep_spawn.error);
+                                                TState.SpawnDelay = true;
+                                                return;
+                                            } 
+                                            if (creep_spawn.error) {
+                                                //console.log(creep_spawn.error);
+                                                TState.SpawnDelay = true;
+                                                return;
+                                            }
+                                            TState.AvailableEnergy -= TState.CreepBodyTierCriteria[TState.TechLevel][TState.SpawnQueue[0].CreepType].total;
+                                            TState.CreepGroups[TState.SpawnQueue[0].GroupType][i].CreepsWrapper[j].CreepObj = creep_spawn.object;
+                                            TState.SpawnQueue.splice(0,1);
+                                            return;
+                                        
+                                    }
+                                    
+                                }
+                            }
+                        }
+                    }
+
+                } else {                    
+                    //console.log("Not enough energy");
+                    TState.SpawnDelay = true;
+                    
+                }
+                
+            },
+            CanSpawnCreep:function () {
+                TState.Structures.ScanEnergySupply();
+                if (TState.SpawnQueue.length > 0) {
+                    switch (TState.SpawnQueue[0].CreepType) {
+                        
+                        case "harvester":
+                            if (TState.AvailableEnergy >= TState.CreepBodyTierCriteria[TState.TechLevel][TState.SpawnQueue[0].CreepType].total) {
+                                return true;
+                            }
+                        break;
+                        case "transporter":
+                            if (TState.AvailableEnergy >= TState.CreepBodyTierCriteria[TState.TechLevel][TState.SpawnQueue[0].CreepType].total) {
+                                return true;
+                            }
+                        break;
+                        case "builder":
+                            if (TState.AvailableEnergy >= TState.CreepBodyTierCriteria[TState.TechLevel][TState.SpawnQueue[0].CreepType].total) {
+                                return true; 
+                            }
+                        break;
+                        case "melee":
+                            if (TState.AvailableEnergy >= TState.CreepBodyTierCriteria[TState.TechLevel][TState.SpawnQueue[0].CreepType].total) {
+                                return true;
+                            }
+                        break;
+                        case "ranged":
+                            if (TState.AvailableEnergy >= TState.CreepBodyTierCriteria[TState.TechLevel][TState.SpawnQueue[0].CreepType].total) {
+                                return true;
+                            }
+                        break;
+                        case "healer":
+                            if (TState.AvailableEnergy >= TState.CreepBodyTierCriteria[TState.TechLevel][TState.SpawnQueue[0].CreepType].total) {
+                                return true;
+                            }
+                        break;
+                    }
+
+                }
+                return false;
+            },
+        },
+        Extensions: {
+            InitExtensions:function() {
+                TState.Extensions = utils.getObjectsByPrototype(StructureExtension).find(i => i.my);
+            },
+        },
+        Containers: {
+            InitContainers:function() {
+                let room_containers = utils.getObjectsByPrototype(StructureContainer);
+                TState.Containers = room_containers.filter(c => c.store.getUsedCapacity(RESOURCE_ENERGY) > 0);
+
+            },
+
+            ScanContainers:function() {
+                let room_containers = utils.getObjectsByPrototype(StructureContainer);
+                TState.Containers = room_containers.filter(c => c.store.getUsedCapacity(RESOURCE_ENERGY) > 0);
+            }
+        }
+    },
+    Resources: {
+        InitRoomSources:function() {
+            TState.RoomSources = [];
+            TState.RoomSources = TState.RoomSources.concat(utils.getObjectsByPrototype(Source));
+        },
     },
 };
 export function loop() {
@@ -1969,5 +1993,5 @@ export function loop() {
     if (getTicks() % 30 == 0) {
         TState.RunTime.StateUpdate();
     }
-    TState.RunTime.RunCreepGroups();    
+    TState.RunTime.RunGroups();    
 }
