@@ -18,8 +18,9 @@ let TState = {
     GameType: "",    
     TechLevel: "TIER0", 
     TechLevelKeys: ["TIER0", "TIER1", "TIER2", "TIER3", "TIER4"],
+    GroupKeys: ["harvester_group", "build_group", "defense_group", "attack_group", "capture_group"],
     ZoneOffsets: {
-        attack_group: 5,
+        attack_group: 7,
         defense_group: 5,
         harvester_group: 3,
         build_group: 3,
