@@ -168,14 +168,26 @@ let TState = {
                             }
                         }
                     }
-                    TState.RunTime.RunGroupMind(TState.CreepGroups[key][i]);
                 }
             }
         },
         RunGroupMind:function(Group) {            
             TState.Groups.ScanGroupLeader(Group);            
             TState.Groups.RepositionGroupZone(Group);
-            console.log(Group.CurrentGroupLeader);
+            //Check if my creeps are in their group zones if they are confined to group movement.
+            //Check if creeps are in groups agro zone
+            //Check if Groups creeps are in their zones, if not, tell them to move there.
+            
+            /*
+            for (let i = 0; i < Group.CreepsWrapper.length; i++) {
+
+                if (Group.CreepsWrapper[i].CreepObj && TState.RunTime.Utils.ZoneToCreepCollisionCheck(Group, Group.CreepsWrapper[i].CreepObj)) {
+                    console.log("COLLISION: "+Group.ID+":"+Group.CreepsWrapper[i].CreepType);
+                }
+            }
+            */
+
+            //TODO:// TState.Groups.SelectObjective(Group);
             //TODO:// Lots of group decision tasks here.
         },
         RunAttacker:function(CreepWrapper) {
@@ -283,8 +295,13 @@ let TState = {
             }
 
             if (CreepWrapper.CurrentStatus == "container-search") {
+                if (CreepWrapper.CurrentTarget && !CreepWrapper.CurrentTarget.store) {
+                    CreepWrapper.CurrentTarget = null;
+                }
+
+
                 if (!CreepWrapper.CurrentTarget) {
-                    CreepWrapper.CurrentTarget = findClosestByPath(CreepWrapper.CreepObj, TState.Containers);
+                    CreepWrapper.CurrentTarget = findClosestByPath(TState.Spawns[0], TState.Containers);
                     if (CreepWrapper.CurrentTarget == null) {
                         TState.NeedContainerScan = true;
                         CreepWrapper.CurrentTarget = null;
@@ -294,6 +311,7 @@ let TState = {
                         }
                     }
                 } else {
+                    
                     if (CreepWrapper.CreepObj.withdraw(CreepWrapper.CurrentTarget, RESOURCE_ENERGY) == ERR_NOT_IN_RANGE) {
                         CreepWrapper.CreepObj.moveTo(CreepWrapper.CurrentTarget);
                     } else if (CreepWrapper.CreepObj.withdraw(CreepWrapper.CurrentTarget, RESOURCE_ENERGY) == ERR_INVALID_TARGET) {
@@ -486,11 +504,11 @@ let TState = {
                             builder_creeps: ("SAS" == TState.GameType) ? 0 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 1,
                         };
                         TState.GroupTierCriteria[TState.TechLevelKeys[i]]["defense_group"] = {
-                            total_groups: ("SAS" == TState.GameType) ? 0 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 1,
-                            total_creeps: ("SAS" == TState.GameType) ? 0 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 3,
-                            melee_creeps: ("SAS" == TState.GameType) ? 0 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 1,
+                            total_groups: ("SAS" == TState.GameType) ? 2 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 1,
+                            total_creeps: ("SAS" == TState.GameType) ? 3 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 3,
+                            melee_creeps: ("SAS" == TState.GameType) ? 2 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 1,
                             ranged_creeps: ("SAS" == TState.GameType) ? 0 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 1,
-                            healer_creeps: ("SAS" == TState.GameType) ? 0 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 1,
+                            healer_creeps: ("SAS" == TState.GameType) ? 1 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 1,
                         };
                         TState.GroupTierCriteria[TState.TechLevelKeys[i]]["attack_group"] = {
                             total_groups: ("SAS" == TState.GameType) ? 1 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 0,
@@ -502,6 +520,8 @@ let TState = {
                         TState.GroupTierCriteria[TState.TechLevelKeys[i]]["capture_group"] = {
                             total_groups: ("SAS" == TState.GameType) ? 0 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 0,
                             total_creeps: ("SAS" == TState.GameType) ? 0 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 0,
+                            melee_creeps: ("SAS" == TState.GameType) ? 0 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 0,
+                            healer_creeps: ("SAS" == TState.GameType) ? 0 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 0,
                         };
 
 
@@ -636,56 +656,55 @@ let TState = {
         InitCreepWrappers:function() {
             TState.Groups.ScanGroupsCreepWrappers();
         },
-        ScanGroups:function() {            
+        ScanGroups:function() {         
             for (let i = 0; i < TState.GroupKeys.length; i++) {
                 if (!TState.CreepGroups[TState.GroupKeys[i]]) {
                     TState.CreepGroups[TState.GroupKeys[i]] = [];
-            }
+                }
                 if (TState.CreepGroups[TState.GroupKeys[i]].length < TState.GroupTierCriteria[TState.TechLevel][TState.GroupKeys[i]].total_groups) {
                     for (let j = TState.CreepGroups[TState.GroupKeys[i]].length; j < TState.GroupTierCriteria[TState.TechLevel][TState.GroupKeys[i]].total_groups; j++) {
-                    let new_group = {
+                        let new_group = {
                             ID: TState.GroupKeys[i]+"-"+TState.CreepGroupIdTicker,
                             Type: TState.GroupKeys[i],
-                        CurrentGroupLeader: null,
+                            CurrentGroupLeader: null,
                             GroupIsReady: false,
                             CurrentTask: "",
                             AgroZone:[],
-                        CreepsWrapper:[],
-                        GroupObjectives:[],
-                        Zone: {
-                            CenterPos:{
-                                x : 0,
-                                y : 0,
+                            CreepsWrapper:[],
+                            GroupObjectives:[],
+                            Zone: {
+                                CenterPos:{
+                                    x : 0,
+                                    y : 0,
+                                },
+                                TopLeftPos:{
+                                    x : 0,
+                                    y : 0,
+                                },
+                                TopRightPos:{
+                                    x : 0,
+                                    y : 0,
+                                },
+                                BottomLeftPos:{
+                                    x : 0,
+                                    y : 0,
+                                },
+                                BottomRightPos:{
+                                    x : 0,
+                                    y : 0,
+                                },
                             },
-                            TopLeftPos:{
-                                x : 0,
-                                y : 0,
-                            },
-                            TopRightPos:{
-                                x : 0,
-                                y : 0,
-                            },
-                            BottomLeftPos:{
-                                x : 0,
-                                y : 0,
-                            },
-                            BottomRightPos:{
-                                x : 0,
-                                y : 0,
-                            },
-                        },
-                        
-                        
-                    }                 
+                            
+                            
+                        }                 
                         TState.CreepGroups[TState.GroupKeys[i]].push(new_group);
-                    TState.CreepGroupIdTicker++;
+                        TState.CreepGroupIdTicker++;
+                    }
                 }
-            }
             }
         },
         ScanGroupsCreepWrappers:function () {
-            //CreepGroupKeys: ["harvester_group", "defense_group", "attack_group", "build_group","capture_group"],
-            //TODO Add capture groups
+            //GroupKeys: ["harvester_group", "defense_group", "attack_group", "build_group","capture_group"],
 
             for (let i = 0; i < TState.CreepGroups["harvester_group"].length; i++) {
                 if (TState.CreepGroups["harvester_group"][i].CreepsWrapper.length == 0) {
@@ -701,6 +720,7 @@ let TState = {
                             CurrentCollisions: [],
                             DangerCreepCollision: [],
                             IsGroupLeader: false,
+                            IsInGroupZone: false,
                             AgroRect: {                                
                                 top_left: 0,  
                                 top_right: 0,
@@ -726,6 +746,7 @@ let TState = {
                             CurrentCollisions: [],
                             DangerCreepCollision: [],
                             IsGroupLeader: false,
+                            IsInGroupZone: false,
                             AgroRect: {                                
                                 top_left: 0,  
                                 top_right: 0,
@@ -765,6 +786,7 @@ let TState = {
                             CurrentCollisions: [],
                             DangerCreepCollision: [],
                             IsGroupLeader: false,
+                            IsInGroupZone: false,
                             AgroRect: {                                
                                 top_left: 0,  
                                 top_right: 0,
@@ -792,6 +814,7 @@ let TState = {
                             CurrentCollisions: [],
                             DangerCreepCollision: [],
                             IsGroupLeader: false,
+                            IsInGroupZone: false,
                             AgroRect: {                                
                                 top_left: 0,  
                                 top_right: 0,
@@ -821,6 +844,8 @@ let TState = {
                             CurrentStatus: "",
                             CurrentCollisions: [],
                             DangerCreepCollision: [],
+                            IsGroupLeader: false,
+                            IsInGroupZone: false,
                             AgroRect: {                                
                                 top_left: 0,  
                                 top_right: 0,
@@ -854,6 +879,7 @@ let TState = {
                             CurrentCollisions: [],
                             DangerCreepCollision: [],
                             IsGroupLeader: false,
+                            IsInGroupZone: false,
                             AgroRect: {                                
                                 top_left: 0,  
                                 top_right: 0,
@@ -886,6 +912,7 @@ let TState = {
                             CurrentCollisions: [],
                             DangerCreepCollision: [],
                             IsGroupLeader: false,
+                            IsInGroupZone: false,
                             AgroRect: {                                
                                 top_left: 0,  
                                 top_right: 0,
@@ -913,6 +940,7 @@ let TState = {
                             CurrentCollisions: [],
                             DangerCreepCollision: [],
                             IsGroupLeader: false,
+                            IsInGroupZone: false,
                             AgroRect: {                                
                                 top_left: 0,  
                                 top_right: 0,
@@ -940,6 +968,7 @@ let TState = {
                             CurrentCollisions: [],
                             DangerCreepCollision: [],
                             IsGroupLeader: false,
+                            IsInGroupZone: false,
                             AgroRect: {                                
                                 top_left: 0,  
                                 top_right: 0,
@@ -986,6 +1015,7 @@ let TState = {
                             CurrentCollisions: [],
                             DangerCreepCollision: [],
                             IsGroupLeader: false,
+                            IsInGroupZone: false,
                             AgroRect: {                                
                                 top_left: 0,  
                                 top_right: 0,
@@ -1012,6 +1042,7 @@ let TState = {
                             CurrentCollisions: [],
                             DangerCreepCollision: [],
                             IsGroupLeader: false,
+                            IsInGroupZone: false,
                             AgroRect: {                                
                                 top_left: 0,  
                                 top_right: 0,
@@ -1038,6 +1069,7 @@ let TState = {
                             CurrentCollisions: [],
                             DangerCreepCollision: [],
                             IsGroupLeader: false,
+                            IsInGroupZone: false,
                             AgroRect: {                                
                                 top_left: 0,  
                                 top_right: 0,
@@ -1069,6 +1101,7 @@ let TState = {
                             CurrentCollisions: [],
                             DangerCreepCollision: [],
                             IsGroupLeader: false,
+                            IsInGroupZone: false,
                             AgroRect: {                                
                                 top_left: 0,  
                                 top_right: 0,
@@ -1095,6 +1128,7 @@ let TState = {
                             CurrentCollisions: [],
                             DangerCreepCollision: [],
                             IsGroupLeader: false,
+                            IsInGroupZone: false,
                             AgroRect: {                                
                                 top_left: 0,  
                                 top_right: 0,
@@ -1121,6 +1155,7 @@ let TState = {
                             CurrentCollisions: [],
                             DangerCreepCollision: [],
                             IsGroupLeader: false,
+                            IsInGroupZone: false,
                             AgroRect: {                                
                                 top_left: 0,  
                                 top_right: 0,
@@ -1165,6 +1200,7 @@ let TState = {
                             CurrentCollisions: [],
                             DangerCreepCollision: [],
                             IsGroupLeader: false,
+                            IsInGroupZone: false,
                             AgroRect: {                                
                                 top_left: 0,  
                                 top_right: 0,
@@ -1190,6 +1226,7 @@ let TState = {
                             CurrentCollisions: [],
                             DangerCreepCollision: [],
                             IsGroupLeader: false,
+                            IsInGroupZone: false,
                             AgroRect: {                                
                                 top_left: 0,  
                                 top_right: 0,
@@ -1215,6 +1252,7 @@ let TState = {
                             CurrentCollisions: [],
                             DangerCreepCollision: [],
                             IsGroupLeader: false,
+                            IsInGroupZone: false,
                             AgroRect: {                                
                                 top_left: 0,  
                                 top_right: 0,
@@ -1230,7 +1268,105 @@ let TState = {
                     }
 
                 }
-            }            
+            }      
+            
+            for (let i = 0; i < TState.CreepGroups["capture_group"].length; i++) {
+                if (TState.CreepGroups["capture_group"][i].CreepsWrapper.length == 0) {                        
+                    for (let j = 0; j < TState.GroupTierCriteria[TState.TechLevel].capture_group.melee_creeps; j++) {
+                        let Wrapper = {
+                            ID: TState.CreepIdTicker++,
+                            GroupId: TState.CreepGroups["capture_group"][i].ID,
+                            GroupType: "capture_group",
+                            CreepType: "melee",
+                            CurrentTarget : null,
+                            TargetType : "",
+                            CurrentStatus: "",
+                            CurrentCollisions: [],
+                            DangerCreepCollision: [],
+                            IsGroupLeader: false,
+                            IsInGroupZone: false,
+                            AgroRect: {                                
+                                top_left: 0,  
+                                top_right: 0,
+                                bot_left: 0, 
+                                bot_right: 0,
+                                width: 0,
+                                height: 0,
+                            },
+                            CreepObj: null,
+                            Objectives: [],
+
+                        };
+                        TState.CreepGroups["capture_group"][j].CreepsWrapper.push(Wrapper);
+                    } 
+                    for (let j = 0; j < TState.GroupTierCriteria[TState.TechLevel].capture_group.healer_creeps; j++) {
+                        let Wrapper = {
+                            ID: TState.CreepIdTicker++,
+                            GroupId: TState.CreepGroups["capture_group"][i].ID,
+                            GroupType: "capture_group",
+                            CreepType: "healer",
+                            CurrentTarget : null,
+                            TargetType : "",
+                            CurrentStatus: "",
+                            CurrentCollisions: [],
+                            DangerCreepCollision: [],
+                            IsGroupLeader: false,
+                            IsInGroupZone: false,
+                            AgroRect: {                                
+                                top_left: 0,  
+                                top_right: 0,
+                                bot_left: 0, 
+                                bot_right: 0,
+                                width: 0,
+                                height: 0,
+                            },
+                            CreepObj: null,
+                            Objectives: [],
+
+                        };
+                        TState.CreepGroups["capture_group"][j].CreepsWrapper.push(Wrapper);
+                    } 
+                } else if (TState.CreepGroups["capture_group"][i].CreepsWrapper.length > 0) {
+                    let attacker_total = 0;
+                    let healer_total = 0;
+                    for (let j = 0; j <TState.CreepGroups["capture_group"][i].CreepsWrapper.length; j++) {
+                        if (TState.CreepGroups["capture_group"][i].CreepsWrapper[j].CreepType == "melee") {
+                            attacker_total++;
+                        }
+                    }
+                    for (let j = 0; j <TState.CreepGroups["capture_group"][i].CreepsWrapper.length; j++) {
+                        if (TState.CreepGroups["capture_group"][i].CreepsWrapper[j].CreepType == "healer") {
+                            healer_total++;
+                        }
+                    }
+                    for (let j = healer_total; j < TState.GroupTierCriteria[TState.TechLevel].capture_group.healer_creeps; j++) {
+                        let Wrapper = {
+                            GroupId: TState.CreepGroups["capture_group"][i].ID,
+                            GroupType: "capture_group",
+                            CreepType: "healer",
+                            CurrentTarget : null,
+                            TargetType : "",
+                            CurrentStatus: "",
+                            CurrentCollisions: [],
+                            DangerCreepCollision: [],
+                            IsGroupLeader: false,
+                            IsInGroupZone: false,
+                            AgroRect: {                                
+                                top_left: 0,  
+                                top_right: 0,
+                                bot_left: 0, 
+                                bot_right: 0,
+                                width: 0,
+                                height: 0,
+                            },
+                            CreepObj: null,
+                            Objectives: [],
+                        };
+                        TState.CreepGroups["capture_group"][i].CreepsWrapper.push(Wrapper);
+                    }
+                              
+                }
+            }
         },
         RequeueDeadCreeps:function () {
             for (let key in TState.CreepGroups) {
@@ -1299,7 +1435,8 @@ let TState = {
                     Group.Zone.BottomRightPos.y= Group.Zone.CenterPos.y+TState.ZoneOffsets.builder_group;
                 }
             }
-        },        
+        },    
+
         Creeps: {
             /*
             let Wrapper = {
