@@ -329,25 +329,29 @@ let TState = {
                 let xdiff = obj2.x - obj1.x;
                 return Math.sqrt((ydiff*ydiff)+(xdiff*xdiff))
             },
-            perimiterCheck:function() {
-                /*
+            ZoneToZoneCollisionCheck:function(obj1, obj2) {
+                
                 //The sides of the rectangles
-                int leftA, leftB;
-                int rightA, rightB;
-                int topA, topB;
-                int bottomA, bottomB;
+                let leftA = 0;
+                let leftB = 0;
+                let rightA = 0;
+                let rightB = 0;
+                let topA = 0;
+                let topB = 0;
+                let bottomA = 0;
+                let bottomB = 0;
 
                 //Calculate the sides of rect A
-                leftA = a.x;
-                rightA = a.x + a.w;
-                topA = a.y;
-                bottomA = a.y + a.h;
+                leftA = obj1.Zone.TopLeftPos.x;
+                rightA = obj1.Zone.TopRightPos.x;
+                topA = obj1.Zone.TopRightPos.y;
+                bottomA = obj1.Zone.BottomLeftPos.y;
 
                 //Calculate the sides of rect B
-                leftB = b.x;
-                rightB = b.x + b.w;
-                topB = b.y;
-                bottomB = b.y + b.h;
+                leftB = obj2.Zone.TopLeftPos.x;
+                rightB = obj2.Zone.TopRightPos.x;
+                topB = obj2.Zone.TopRightPos.y;
+                bottomB = obj2.Zone.BottomLeftPos.y;
                 //If any of the sides from A are outside of B
                 if( bottomA <= topB )
                 {
@@ -371,7 +375,41 @@ let TState = {
 
                 //If none of the sides from A are outside B
                 return true;
-                */
+                
+            },
+            ZoneToCreepCollisionCheck:function(obj1, Creep) {
+                //console.log(Creep);
+
+                let leftA = 0;
+                let rightA = 0;
+                let topA = 0;
+                let bottomA = 0;
+
+
+                leftA = obj1.Zone.TopLeftPos.x;
+                rightA = obj1.Zone.TopRightPos.x;
+                topA = obj1.Zone.TopRightPos.y;
+                bottomA = obj1.Zone.BottomLeftPos.y;
+
+
+                if (Creep.y <= obj1.Zone.TopLeftPos.y) {
+                    return false;
+                }
+
+                if (Creep.y >= obj1.Zone.BottomLeftPos.y) {
+                    return false;
+                }
+
+                if (Creep.x >= obj1.Zone.BottomRightPos.x) {
+                    return false;
+                }
+
+                if (Creep.x <= obj1.Zone.TopLeftPos.x) {
+                    return false;
+                }
+
+                return true;
+                
             },
         },
     },
