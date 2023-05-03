@@ -141,8 +141,8 @@ let TState = {
             TState.visual_debugger.clear();
             for (let key in TState.CreepGroups) {
                 for(let i = 0; i < TState.CreepGroups[key].length; i++) {
+                    TState.RunTime.RunGroupMind(TState.CreepGroups[key][i]);
                     for(let j = 0; j < TState.CreepGroups[key][i].CreepsWrapper.length; j++) {
-                        //console.log(TState.CreepGroups[key][i].CreepsWrapper[j].CreepType);
                         if (TState.CreepGroups[key][i].CreepsWrapper[j].CreepType == "harvester" && TState.CreepGroups[key][i].CreepsWrapper[j].CreepObj) {
                             if(TState.CreepGroups[key][i].CreepsWrapper[j].CreepObj.id) {
                             }
@@ -156,7 +156,7 @@ let TState = {
                             }
                         } else if (TState.CreepGroups[key][i].CreepsWrapper[j].CreepType == "melee" && TState.CreepGroups[key][i].CreepsWrapper[j].CreepObj) {
                             if(TState.CreepGroups[key][i].CreepsWrapper[j].CreepObj.id) {
-
+                                TState.RunTime.RunAttacker(TState.CreepGroups[key][i].CreepsWrapper[j]);
                             }
                         } else if (TState.CreepGroups[key][i].CreepsWrapper[j].CreepType == "ranged" && TState.CreepGroups[key][i].CreepsWrapper[j].CreepObj) {
                             if(TState.CreepGroups[key][i].CreepsWrapper[j].CreepObj.id) {
