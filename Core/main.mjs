@@ -598,17 +598,19 @@ let TState = {
             TState.Groups.ScanGroupsCreepWrappers();
         },
         ScanGroups:function() {            
-
-            if (!TState.CreepGroups["harvester_group"]) {
-                TState.CreepGroups["harvester_group"] = [];
+            for (let i = 0; i < TState.GroupKeys.length; i++) {
+                if (!TState.CreepGroups[TState.GroupKeys[i]]) {
+                    TState.CreepGroups[TState.GroupKeys[i]] = [];
             }
-                       
-            if (TState.CreepGroups["harvester_group"].length < TState.GroupTierCriteria[TState.TechLevel]["harvester_group"].total_groups) {
-                for (let j = TState.CreepGroups["harvester_group"].length; j < TState.GroupTierCriteria[TState.TechLevel]["harvester_group"].total_groups; j++) {
+                if (TState.CreepGroups[TState.GroupKeys[i]].length < TState.GroupTierCriteria[TState.TechLevel][TState.GroupKeys[i]].total_groups) {
+                    for (let j = TState.CreepGroups[TState.GroupKeys[i]].length; j < TState.GroupTierCriteria[TState.TechLevel][TState.GroupKeys[i]].total_groups; j++) {
                     let new_group = {
-                        ID: "harvester_group"+"-"+TState.CreepGroupIdTicker,
-                        Type: "harvester_group",
+                            ID: TState.GroupKeys[i]+"-"+TState.CreepGroupIdTicker,
+                            Type: TState.GroupKeys[i],
                         CurrentGroupLeader: null,
+                            GroupIsReady: false,
+                            CurrentTask: "",
+                            AgroZone:[],
                         CreepsWrapper:[],
                         GroupObjectives:[],
                         Zone: {
@@ -636,171 +638,10 @@ let TState = {
                         
                         
                     }                 
-                    TState.CreepGroups["harvester_group"].push(new_group);
+                        TState.CreepGroups[TState.GroupKeys[i]].push(new_group);
                     TState.CreepGroupIdTicker++;
                 }
             }
-            
-
-            if (!TState.CreepGroups["build_group"]) {
-                TState.CreepGroups["build_group"] = [];
-            }
-
-            if (TState.CreepGroups["build_group"].length < TState.GroupTierCriteria[TState.TechLevel]["build_group"].total_groups) {
-                for (let j = TState.CreepGroups["build_group"].length; j < TState.GroupTierCriteria[TState.TechLevel]["build_group"].total_groups; j++) {
-                    let new_group = {
-                        ID: "build_group"+"-"+TState.CreepGroupIdTicker,
-                        Type: "build_group",
-                        CurrentGroupLeader: null,
-                        CreepsWrapper:[],
-                        GroupObjectives:[],
-                        Zone: {
-                            CenterPos:{
-                                x : 0,
-                                y : 0,
-                            },
-                            TopLeftPos:{
-                                x : 0,
-                                y : 0,
-                            },
-                            TopRightPos:{
-                                x : 0,
-                                y : 0,
-                            },
-                            BottomLeftPos:{
-                                x : 0,
-                                y : 0,
-                            },
-                            BottomRightPos:{
-                                x : 0,
-                                y : 0,
-                            },
-                        },
-                        
-                    }                 
-                    TState.CreepGroups["build_group"].push(new_group);
-                    TState.CreepGroupIdTicker++;
-                }
-            }
-
-            if (!TState.CreepGroups["defense_group"]) {
-                TState.CreepGroups["defense_group"] = [];
-            }
-
-            if (TState.CreepGroups["defense_group"].length < TState.GroupTierCriteria[TState.TechLevel]["defense_group"].total_groups) {
-                for (let i = TState.CreepGroups["defense_group"].length; i < TState.GroupTierCriteria[TState.TechLevel]["defense_group"].total_groups; i++) {
-                    let new_group = {
-                        ID: "defense_group"+"-"+TState.CreepGroupIdTicker,
-                        Type: "defense_group",
-                        CurrentGroupLeader: null,
-                        CreepsWrapper:[],
-                        GroupObjectives:[],
-                        Zone: {
-                            CenterPos:{
-                                x : 0,
-                                y : 0,
-                            },
-                            TopLeftPos:{
-                                x : 0,
-                                y : 0,
-                            },
-                            TopRightPos:{
-                                x : 0,
-                                y : 0,
-                            },
-                            BottomLeftPos:{
-                                x : 0,
-                                y : 0,
-                            },
-                            BottomRightPos:{
-                                x : 0,
-                                y : 0,
-                            },
-                        },
-                    }                 
-                    TState.CreepGroups["defense_group"].push(new_group);
-                    TState.CreepGroupIdTicker++;
-                }
-            }
-
-            if (!TState.CreepGroups["attack_group"]) {
-                TState.CreepGroups["attack_group"] = [];
-            }
-            
-            if (TState.CreepGroups["attack_group"].length < TState.GroupTierCriteria[TState.TechLevel]["attack_group"].total_groups) {
-                for (let i = TState.CreepGroups["attack_group"].length; i < TState.GroupTierCriteria[TState.TechLevel]["attack_group"].total_groups; i++) {
-                    let new_group = {
-                        ID: "attack_group"+"-"+TState.CreepGroupIdTicker,
-                        Type: "attack_group",
-                        CurrentGroupLeader: null,
-                        CreepsWrapper:[],
-                        GroupObjectives:[],
-                        Zone: {
-                            CenterPos:{
-                                x : 0,
-                                y : 0,
-                            },
-                            TopLeftPos:{
-                                x : 0,
-                                y : 0,
-                            },
-                            TopRightPos:{
-                                x : 0,
-                                y : 0,
-                            },
-                            BottomLeftPos:{
-                                x : 0,
-                                y : 0,
-                            },
-                            BottomRightPos:{
-                                x : 0,
-                                y : 0,
-                            },
-                        },
-                    }                 
-                    TState.CreepGroups["attack_group"].push(new_group);
-                    TState.CreepGroupIdTicker++;
-                }
-            }  
-
-            if (!TState.CreepGroups["capture_group"]) {
-                TState.CreepGroups["capture_group"] = [];
-            }
-            
-            if (TState.CreepGroups["capture_group"].length < TState.GroupTierCriteria[TState.TechLevel]["capture_group"].total_groups) {
-                for (let i = TState.CreepGroups["capture_group"].length; i < TState.GroupTierCriteria[TState.TechLevel]["capture_group"].total_groups; i++) {
-                    let new_group = {
-                        ID: "capture_group"+"-"+TState.CreepGroupIdTicker,
-                        Type: "capture_group",
-                        CurrentGroupLeader: null,
-                        CreepsWrapper:[],
-                        GroupObjectives:[],
-                        Zone: {
-                            CenterPos:{
-                                x : 0,
-                                y : 0,
-                            },
-                            TopLeftPos:{
-                                x : 0,
-                                y : 0,
-                            },
-                            TopRightPos:{
-                                x : 0,
-                                y : 0,
-                            },
-                            BottomLeftPos:{
-                                x : 0,
-                                y : 0,
-                            },
-                            BottomRightPos:{
-                                x : 0,
-                                y : 0,
-                            },
-                        },
-                    }                 
-                    TState.CreepGroups["capture_group"].push(new_group);
-                    TState.CreepGroupIdTicker++;
-                }
             }
         },
         ScanGroupsCreepWrappers:function () {
@@ -826,8 +667,6 @@ let TState = {
                                 top_right: 0,
                                 bot_left: 0, 
                                 bot_right: 0,
-                                width: 0,
-                                height: 0,
                             },
                             CreepObj: null,
                             Objectives: [],
