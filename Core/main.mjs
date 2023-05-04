@@ -159,11 +159,11 @@ let TState = {
                             }
                         } else if (TState.CreepGroups[key][i].CreepsWrapper[j].CreepType == "ranged" && TState.CreepGroups[key][i].CreepsWrapper[j].CreepObj) {
                             if(TState.CreepGroups[key][i].CreepsWrapper[j].CreepObj.id) {
-
+                                TState.RunTime.RunRanged(TState.CreepGroups[key][i].CreepsWrapper[j], TState.CreepGroups[key][i]);
                             }
                         } else if (TState.CreepGroups[key][i].CreepsWrapper[j].CreepType == "healer" && TState.CreepGroups[key][i].CreepsWrapper[j].CreepObj) {
                             if(TState.CreepGroups[key][i].CreepsWrapper[j].CreepObj.id) {
-
+                                TState.RunTime.RunHealer(TState.CreepGroups[key][i].CreepsWrapper[j], TState.CreepGroups[key][i]);
                             }
                         }
                     }
@@ -175,30 +175,111 @@ let TState = {
             TState.Groups.RepositionGroupZone(Group);
             TState.Groups.CheckGroupZoneState(Group);
             TState.Groups.CheckGroupEnemyAgroZoneState(Group);
-
         },
         RunAttacker:function(CreepWrapper, Group) {
-            if (Group.GroupIsReady) {
-                if (!CreepWrapper.CurrentTarget) {
-                    CreepWrapper.CurrentTarget = findClosestByPath(CreepWrapper.CreepObj, TState.EnemyCreeps);
-                } else {    
-                    let ret_code = CreepWrapper.CreepObj.attack(CreepWrapper.CurrentTarget);
-                    if (ret_code == ERR_NOT_IN_RANGE) {
-                        let ret_code = CreepWrapper.CreepObj.moveTo(CreepWrapper.CurrentTarget); 
-                        if (ret_code != 0) {
-                            console.log("ERROR_RUN_ATTACK_MOVE");
+            if (Group.GroupIsReady) {             
+                switch (Group.GroupType) {
+                    case "attack_group":
+
+                        if (!CreepWrapper.CurrentTarget || getTicks() % 5 == 0) {
+                            if (Group.AgroZoneEnemies.length > 0) {
+                                CreepWrapper.CurrentTarget = findClosestByPath(CreepWrapper.CreepObj, Group.AgroZoneEnemies);
+                            } else {
+                                CreepWrapper.CurrentTarget = TState.EnemySpawns[0];
+                            }                            
                         }
-                    } else if (ret_code == ERR_INVALID_TARGET) {
-                        CreepWrapper.CurrentTarget = null;
-                    }
+                        let ret_code = CreepWrapper.CreepObj.attack(CreepWrapper.CurrentTarget);
+                        if (ret_code == ERR_NOT_IN_RANGE) {
+                            let ret_code = CreepWrapper.CreepObj.moveTo(CreepWrapper.CurrentTarget); 
+                            if (ret_code != 0) {
+                                console.log("ERROR_RUN_ATTACK_MOVE");
+                            }
+                        } else if (ret_code == ERR_INVALID_TARGET) {
+                            CreepWrapper.CurrentTarget = null;
+                        }
+
+                    break;
+                    case "defense_group":
+                    break;
+                    case "harvester_group":
+                    break;
+                    case "build_group":
+                    break;
+                    case "capture_group":
+                    break;
+                }
+            } else {
+                switch (Group.GroupType) {
+                    case "attack_group":
+                    break;
+                    case "defense_group":
+                    break;
+                    case "harvester_group":
+                    break;
+                    case "build_group":
+                    break;
+                    case "capture_group":
+                    break;
                 }
             }
-            
-
-            
+        },
+        RunRanged:function(CreepWrapper, Group) {
+            if (Group.GroupIsReady) {             
+                switch (Group.GroupType) {
+                    case "attack_group":
+                    break;
+                    case "defense_group":
+                    break;
+                    case "harvester_group":
+                    break;
+                    case "build_group":
+                    break;
+                    case "capture_group":
+                    break;
+                }
+            } else {
+                switch (Group.GroupType) {
+                    case "attack_group":
+                    break;
+                    case "defense_group":
+                    break;
+                    case "harvester_group":
+                    break;
+                    case "build_group":
+                    break;
+                    case "capture_group":
+                    break;
+                }
+            }
         },
         RunHealer:function(CreepWrapper, Group) {
-            //console.log(CreepWrapper);
+            if (Group.GroupIsReady) {             
+                switch (Group.GroupType) {
+                    case "attack_group":
+                    break;
+                    case "defense_group":
+                    break;
+                    case "harvester_group":
+                    break;
+                    case "build_group":
+                    break;
+                    case "capture_group":
+                    break;
+                }
+            } else {
+                switch (Group.GroupType) {
+                    case "attack_group":
+                    break;
+                    case "defense_group":
+                    break;
+                    case "harvester_group":
+                    break;
+                    case "build_group":
+                    break;
+                    case "capture_group":
+                    break;
+                }
+            }
         },
         RunHarvester:function(CreepWrapper, Group) {
 
@@ -654,7 +735,7 @@ let TState = {
                             CurrentGroupLeader: null,
                             GroupIsReady: false,
                             CurrentTask: "",
-                            AgroZone:[],
+                            AgroZoneEnemies:[],
                             CreepsWrapper:[],
                             GroupObjectives:[],
                             Zone: {
@@ -1459,7 +1540,13 @@ let TState = {
             }
         },
         CheckGroupEnemyAgroZoneState:function(Group) {
-
+            Group.AgroZoneEnemies = [];
+            for (let i = 0; i < TState.EnemyCreeps.length; i++) { 
+                if (TState.RunTime.Utils.ZoneToCreepCollisionCheck(Group, TState.EnemyCreeps[i])) {
+                    console.log(Group.GroupType+"-AGRO: "+TState.EnemyCreeps[i].ID);
+                    Group.AgroZoneEnemies.push(TState.EnemyCreeps[i]);
+                }
+            }
         },
         Creeps: {
             /*
