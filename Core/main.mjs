@@ -21,7 +21,7 @@ let TState = {
     GroupKeys: ["harvester_group", "build_group", "defense_group", "attack_group", "capture_group"],
     ZoneOffsets: {
         attack_group: 7,
-        defense_group: 6,
+        defense_group: 4,
         harvester_group: 3,
         build_group: 3,
     },
@@ -177,10 +177,9 @@ let TState = {
             TState.Groups.CheckGroupEnemyAgroZoneState(Group);
         },
         RunAttacker:function(CreepWrapper, Group) {
-            if (Group.GroupIsReady) {             
-                switch (Group.GroupType) {
+            if (Group.GroupIsReady) {   
+                switch (Group.Type) {
                     case "attack_group":
-
                         if (!CreepWrapper.CurrentTarget || getTicks() % 5 == 0) {
                             if (Group.AgroZoneEnemies.length > 0) {
                                 CreepWrapper.CurrentTarget = findClosestByPath(CreepWrapper.CreepObj, Group.AgroZoneEnemies);
@@ -192,7 +191,7 @@ let TState = {
                         if (ret_code == ERR_NOT_IN_RANGE) {
                             let ret_code = CreepWrapper.CreepObj.moveTo(CreepWrapper.CurrentTarget); 
                             if (ret_code != 0) {
-                                console.log("ERROR_RUN_ATTACK_MOVE");
+                                console.log("ERROR_RUN_ATTACK_MOVE(0)");
                             }
                         } else if (ret_code == ERR_INVALID_TARGET) {
                             CreepWrapper.CurrentTarget = null;
@@ -200,6 +199,76 @@ let TState = {
 
                     break;
                     case "defense_group":
+                        if (!CreepWrapper.CurrentTarget) {
+                            if (Group.AgroZoneEnemies.length > 0) {
+                                CreepWrapper.CurrentTarget = findClosestByPath(CreepWrapper.CreepObj, Group.AgroZoneEnemies);
+                            } else {
+                                if (CreepWrapper.CreepObj.x == Group.Zone.BottomLeftPos.x && CreepWrapper.CreepObj.y == Group.Zone.BottomLeftPos.y) {
+                                    CreepWrapper.CurrentTarget = Group.Zone.TopLeftPos;
+                                } else if (CreepWrapper.CreepObj.x == Group.Zone.TopLeftPos.x && CreepWrapper.CreepObj.y == Group.Zone.TopLeftPos.y) {
+                                    CreepWrapper.CurrentTarget = Group.Zone.TopRightPos;
+                                } else if (CreepWrapper.CreepObj.x == Group.Zone.TopRightPos.x && CreepWrapper.CreepObj.y == Group.Zone.TopRightPos.y) {
+                                    CreepWrapper.CurrentTarget = Group.Zone.BottomRightPos;
+                                } else if (CreepWrapper.CreepObj.x == Group.Zone.BottomRightPos.x && CreepWrapper.CreepObj.y == Group.Zone.BottomRightPos.y) {
+                                    CreepWrapper.CurrentTarget = Group.Zone.BottomLeftPos;
+                                } else {
+                                    switch (getTicks() % 4) {
+                                        case 0:
+                                            CreepWrapper.CurrentTarget = Group.Zone.BottomLeftPos;
+                                        break;                                        
+                                        case 1:
+                                            CreepWrapper.CurrentTarget = Group.Zone.BottomRightPos;
+                                        break;
+                                        case 2:
+                                            CreepWrapper.CurrentTarget = Group.Zone.TopRightPos;
+                                        break;
+                                        case 3:
+                                            CreepWrapper.CurrentTarget = Group.Zone.TopLeftPos;
+                                        break;
+                                    }
+                                }
+                            }
+                        } else {
+                            if (Group.AgroZoneEnemies.length > 0) {
+                                CreepWrapper.CurrentTarget = findClosestByPath(CreepWrapper.CreepObj, Group.AgroZoneEnemies);
+                            }
+
+                            if (JSON.stringify(CreepWrapper.CurrentTarget) === JSON.stringify(Group.Zone.BottomLeftPos)) {
+                                CreepWrapper.CreepObj.moveTo(CreepWrapper.CurrentTarget);
+                                if (CreepWrapper.CreepObj.x == Group.Zone.BottomLeftPos.x && CreepWrapper.CreepObj.y == Group.Zone.BottomLeftPos.y) {
+                                    CreepWrapper.CurrentTarget = null;
+                                }
+
+                            } else if (JSON.stringify(CreepWrapper.CurrentTarget) === JSON.stringify(Group.Zone.BottomRightPos)) {
+                                CreepWrapper.CreepObj.moveTo(CreepWrapper.CurrentTarget);
+                                if (CreepWrapper.CreepObj.x == Group.Zone.BottomRightPos.x && CreepWrapper.CreepObj.y == Group.Zone.BottomRightPos.y) {
+                                    CreepWrapper.CurrentTarget = null;
+                                }
+
+                            } else if (JSON.stringify(CreepWrapper.CurrentTarget) === JSON.stringify(Group.Zone.TopLeftPos)) {
+                                CreepWrapper.CreepObj.moveTo(CreepWrapper.CurrentTarget);
+                                if (CreepWrapper.CreepObj.x == Group.Zone.TopLeftPos.x && CreepWrapper.CreepObj.y == Group.Zone.TopLeftPos.y) {
+                                    CreepWrapper.CurrentTarget = null;
+                                }
+
+                            } else if (JSON.stringify(CreepWrapper.CurrentTarget) === JSON.stringify(Group.Zone.TopRightPos)) {
+                                CreepWrapper.CreepObj.moveTo(CreepWrapper.CurrentTarget);
+                                if (CreepWrapper.CreepObj.x == Group.Zone.TopRightPos.x && CreepWrapper.CreepObj.y == Group.Zone.TopRightPos.y) {
+                                    CreepWrapper.CurrentTarget = null;
+                                }
+
+                            } else {
+                                let ret_code = CreepWrapper.CreepObj.attack(CreepWrapper.CurrentTarget);
+                                if (ret_code == ERR_NOT_IN_RANGE) {
+                                    let ret_code = CreepWrapper.CreepObj.moveTo(CreepWrapper.CurrentTarget); 
+                                    if (ret_code != 0) {
+                                        console.log("ERROR_RUN_ATTACK_MOVE(0)");
+                                    }
+                                } else if (ret_code == ERR_INVALID_TARGET) {
+                                    CreepWrapper.CurrentTarget = null;
+                                }
+                            }
+                        }
                     break;
                     case "harvester_group":
                     break;
@@ -209,7 +278,7 @@ let TState = {
                     break;
                 }
             } else {
-                switch (Group.GroupType) {
+                switch (Group.Type) {
                     case "attack_group":
                     break;
                     case "defense_group":
@@ -225,7 +294,7 @@ let TState = {
         },
         RunRanged:function(CreepWrapper, Group) {
             if (Group.GroupIsReady) {             
-                switch (Group.GroupType) {
+                switch (Group.Type) {
                     case "attack_group":
                     break;
                     case "defense_group":
@@ -238,7 +307,7 @@ let TState = {
                     break;
                 }
             } else {
-                switch (Group.GroupType) {
+                switch (Group.Type) {
                     case "attack_group":
                     break;
                     case "defense_group":
@@ -254,7 +323,7 @@ let TState = {
         },
         RunHealer:function(CreepWrapper, Group) {
             if (Group.GroupIsReady) {             
-                switch (Group.GroupType) {
+                switch (Group.Type) {
                     case "attack_group":
                     break;
                     case "defense_group":
@@ -267,7 +336,7 @@ let TState = {
                     break;
                 }
             } else {
-                switch (Group.GroupType) {
+                switch (Group.Type) {
                     case "attack_group":
                     break;
                     case "defense_group":
@@ -356,6 +425,9 @@ let TState = {
         },
         RunTransporter:function(CreepWrapper, Group) {
             //TODO: START HERE
+            if (!CreepWrapper.CreepObj.store){
+                return;
+            }
 
             if (CreepWrapper.CreepObj.store[RESOURCE_ENERGY] <= 0) {
                 CreepWrapper.CurrentStatus = "container-search";
@@ -407,7 +479,6 @@ let TState = {
 
         },
         StateUpdate:function() {
-            TState.Groups.RequeueDeadCreeps();
             TState.Groups.Creeps.ScanEnemyCreeps();
         },
         Utils: {
@@ -465,19 +536,19 @@ let TState = {
                 
             },
             ZoneToCreepCollisionCheck:function(obj1, Creep) {
-                if (Creep.y <= obj1.Zone.TopLeftPos.y) {
+                if (Creep.y <= obj1.Zone.TopLeftPos.y-2) {
                     return false;
                 }
 
-                if (Creep.y >= obj1.Zone.BottomLeftPos.y) {
+                if (Creep.y >= obj1.Zone.BottomLeftPos.y+2) {
                     return false;
                 }
 
-                if (Creep.x >= obj1.Zone.BottomRightPos.x) {
+                if (Creep.x >= obj1.Zone.BottomRightPos.x+2) {
                     return false;
                 }
 
-                if (Creep.x <= obj1.Zone.TopLeftPos.x) {
+                if (Creep.x <= obj1.Zone.TopLeftPos.x-2) {
                     return false;
                 }
                 return true;                
@@ -570,7 +641,7 @@ let TState = {
                             builder_creeps: ("SAS" == TState.GameType) ? 0 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 1,
                         };
                         TState.GroupTierCriteria[TState.TechLevelKeys[i]]["defense_group"] = {
-                            total_groups: ("SAS" == TState.GameType) ? 2 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 1,
+                            total_groups: ("SAS" == TState.GameType) ? 1 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 1,
                             total_creeps: ("SAS" == TState.GameType) ? 2 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 3,
                             melee_creeps: ("SAS" == TState.GameType) ? 1 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 1,
                             ranged_creeps: ("SAS" == TState.GameType) ? 0 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 1,
@@ -784,6 +855,7 @@ let TState = {
                             TargetType : "",
                             CurrentStatus: "",
                             CurrentCollisions: [],
+                            CurrentPatrolTarget: null,
                             DangerCreepCollision: [],
                             IsGroupLeader: false,
                             IsInGroupZone: false,
@@ -810,6 +882,7 @@ let TState = {
                             TargetType : "",
                             CurrentStatus: "",
                             CurrentCollisions: [],
+                            CurrentPatrolTarget: null,
                             DangerCreepCollision: [],
                             IsGroupLeader: false,
                             IsInGroupZone: false,
@@ -850,6 +923,7 @@ let TState = {
                             TargetType : "",
                             CurrentStatus: "",
                             CurrentCollisions: [],
+                            CurrentPatrolTarget: null,
                             DangerCreepCollision: [],
                             IsGroupLeader: false,
                             IsInGroupZone: false,
@@ -878,6 +952,7 @@ let TState = {
                             TargetType : "",
                             CurrentStatus: "",
                             CurrentCollisions: [],
+                            CurrentPatrolTarget: null,
                             DangerCreepCollision: [],
                             IsGroupLeader: false,
                             IsInGroupZone: false,
@@ -909,6 +984,7 @@ let TState = {
                             TargetType : "",
                             CurrentStatus: "",
                             CurrentCollisions: [],
+                            CurrentPatrolTarget: null,
                             DangerCreepCollision: [],
                             IsGroupLeader: false,
                             IsInGroupZone: false,
@@ -943,6 +1019,7 @@ let TState = {
                             TargetType : "",
                             CurrentStatus: "",
                             CurrentCollisions: [],
+                            CurrentPatrolTarget: null,
                             DangerCreepCollision: [],
                             IsGroupLeader: false,
                             IsInGroupZone: false,
@@ -965,7 +1042,6 @@ let TState = {
             
             for (let i = 0; i< TState.CreepGroups["defense_group"].length; i++) {
                 if (TState.CreepGroups["defense_group"][i].CreepsWrapper.length == 0) {
-
                     for (let k = 0; k < TState.GroupTierCriteria[TState.TechLevel].defense_group.melee_creeps; k++) {
                         let Wrapper = {
                             ID: TState.CreepIdTicker++,
@@ -976,6 +1052,7 @@ let TState = {
                             TargetType : "",
                             CurrentStatus: "",
                             CurrentCollisions: [],
+                            CurrentPatrolTarget: null,
                             DangerCreepCollision: [],
                             IsGroupLeader: false,
                             IsInGroupZone: false,
@@ -1079,6 +1156,7 @@ let TState = {
                             TargetType : "",
                             CurrentStatus: "",
                             CurrentCollisions: [],
+                            CurrentPatrolTarget: null,
                             DangerCreepCollision: [],
                             IsGroupLeader: false,
                             IsInGroupZone: false,
@@ -1106,6 +1184,7 @@ let TState = {
                             TargetType : "",
                             CurrentStatus: "",
                             CurrentCollisions: [],
+                            CurrentPatrolTarget: null,
                             DangerCreepCollision: [],
                             IsGroupLeader: false,
                             IsInGroupZone: false,
@@ -1133,6 +1212,7 @@ let TState = {
                             TargetType : "",
                             CurrentStatus: "",
                             CurrentCollisions: [],
+                            CurrentPatrolTarget: null,
                             DangerCreepCollision: [],
                             IsGroupLeader: false,
                             IsInGroupZone: false,
@@ -1165,6 +1245,7 @@ let TState = {
                             TargetType : "",
                             CurrentStatus: "",
                             CurrentCollisions: [],
+                            CurrentPatrolTarget: null,
                             DangerCreepCollision: [],
                             IsGroupLeader: false,
                             IsInGroupZone: false,
@@ -1264,6 +1345,7 @@ let TState = {
                             TargetType : "",
                             CurrentStatus: "",
                             CurrentCollisions: [],
+                            CurrentPatrolTarget: null,
                             DangerCreepCollision: [],
                             IsGroupLeader: false,
                             IsInGroupZone: false,
@@ -1290,6 +1372,7 @@ let TState = {
                             TargetType : "",
                             CurrentStatus: "",
                             CurrentCollisions: [],
+                            CurrentPatrolTarget: null,
                             DangerCreepCollision: [],
                             IsGroupLeader: false,
                             IsInGroupZone: false,
@@ -1316,6 +1399,7 @@ let TState = {
                             TargetType : "",
                             CurrentStatus: "",
                             CurrentCollisions: [],
+                            CurrentPatrolTarget: null,
                             DangerCreepCollision: [],
                             IsGroupLeader: false,
                             IsInGroupZone: false,
@@ -1348,6 +1432,7 @@ let TState = {
                             TargetType : "",
                             CurrentStatus: "",
                             CurrentCollisions: [],
+                            CurrentPatrolTarget: null,
                             DangerCreepCollision: [],
                             IsGroupLeader: false,
                             IsInGroupZone: false,
@@ -1405,6 +1490,34 @@ let TState = {
                             healer_total++;
                         }
                     }
+
+                    for (let j = attacker_total; j < TState.GroupTierCriteria[TState.TechLevel].attack_group.melee_creeps; j++) {
+                        let Wrapper = {
+                            ID: TState.CreepIdTicker++,
+                            GroupId: TState.CreepGroups["capture_group"][j].ID,
+                            GroupType: "capture_group",
+                            CreepType: "melee",
+                            CurrentTarget : null,
+                            TargetType : "",
+                            CurrentStatus: "",
+                            CurrentCollisions: [],
+                            CurrentPatrolTarget: null,
+                            DangerCreepCollision: [],
+                            IsGroupLeader: false,
+                            IsInGroupZone: false,
+                            AgroRect: {                                
+                                top_left: 0,  
+                                top_right: 0,
+                                bot_left: 0, 
+                                bot_right: 0,
+                                width: 0,
+                                height: 0,
+                            },
+                            CreepObj: null,
+                            Objectives: [],
+                        };
+                        TState.CreepGroups["capture_group"][j].CreepsWrapper.push(Wrapper);
+                    }
                     for (let j = healer_total; j < TState.GroupTierCriteria[TState.TechLevel].capture_group.healer_creeps; j++) {
                         let Wrapper = {
                             GroupId: TState.CreepGroups["capture_group"][i].ID,
@@ -1414,6 +1527,7 @@ let TState = {
                             TargetType : "",
                             CurrentStatus: "",
                             CurrentCollisions: [],
+                            CurrentPatrolTarget: null,
                             DangerCreepCollision: [],
                             IsGroupLeader: false,
                             IsInGroupZone: false,
@@ -1438,7 +1552,9 @@ let TState = {
             for (let key in TState.CreepGroups) {
                 for(let i = 0; i < TState.CreepGroups[key].length; i++) {
                     for(let j = 0; j < TState.CreepGroups[key][i].CreepsWrapper.length; j++) {
-                        if (!TState.CreepGroups[key][i].CreepsWrapper[j].CreepObj && !TState.SpawnQueue.find(ele => ele.ID === TState.CreepGroups[key][i].CreepsWrapper[j].ID)) {
+                        //console.log(TState.CreepGroups[key][i].CreepsWrapper[j].CreepObj);
+                        if (TState.CreepGroups[key][i].CreepsWrapper[j].CreepObj != null && !TState.CreepGroups[key][i].CreepsWrapper[j].CreepObj.hits && !TState.SpawnQueue.find(ele => ele.ID === TState.CreepGroups[key][i].CreepsWrapper[j].ID)) {
+                            
                             TState.SpawnQueue = TState.SpawnQueue.concat(TState.CreepGroups[key][i].CreepsWrapper[j]);
                         }
                     }
@@ -1542,8 +1658,11 @@ let TState = {
         CheckGroupEnemyAgroZoneState:function(Group) {
             Group.AgroZoneEnemies = [];
             for (let i = 0; i < TState.EnemyCreeps.length; i++) { 
+                if (!TState.EnemyCreeps[i]) {
+                    TState.Groups.Creeps.ScanEnemyCreeps();
+                    break;
+                }
                 if (TState.RunTime.Utils.ZoneToCreepCollisionCheck(Group, TState.EnemyCreeps[i])) {
-                    console.log(Group.GroupType+"-AGRO: "+TState.EnemyCreeps[i].ID);
                     Group.AgroZoneEnemies.push(TState.EnemyCreeps[i]);
                 }
             }
@@ -2006,7 +2125,7 @@ let TState = {
                                     for (let k = 0; k < TState.Spawns.length; k++) {
                                             let creep_spawn = TState.Spawns[k].spawnCreep(body);
                                             if (creep_spawn.error == -4) {
-                                                console.log("SpawnDelayActive: "+creep_spawn.error);
+                                                //console.log("SpawnDelayActive: "+creep_spawn.error);
                                                 TState.SpawnDelay = true;
                                                 return;
                                             } 
@@ -2107,9 +2226,11 @@ export function loop() {
     if (TState.SpawnDelay) {
         if (getTicks() % 5 == 0) {
             TState.SpawnDelay = false;
+            TState.Groups.RequeueDeadCreeps();
             TState.Structures.Spawn.PollSpawnQueue();
         }
     } else {
+        TState.Groups.RequeueDeadCreeps();
         TState.Structures.Spawn.PollSpawnQueue();
     }    
     if (TState.NeedContainerScan) {
