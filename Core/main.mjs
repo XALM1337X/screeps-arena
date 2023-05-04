@@ -2237,11 +2237,9 @@ export function loop() {
     if (TState.SpawnDelay) {
         if (getTicks() % 5 == 0) {
             TState.SpawnDelay = false;
-            //TState.Groups.RequeueDeadCreeps();
             TState.Structures.Spawn.PollSpawnQueue();
         }
     } else {
-        //TState.Groups.RequeueDeadCreeps();
         TState.Structures.Spawn.PollSpawnQueue();
     }    
     if (TState.NeedContainerScan) {
