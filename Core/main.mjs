@@ -177,6 +177,11 @@ let TState = {
             TState.Groups.CheckGroupEnemyAgroZoneState(Group);
         },
         RunAttacker:function(CreepWrapper, Group) {
+            if (!CreepWrapper.CreepObj || CreepWrapper.CreepObj.hits == undefined || CreepWrapper.CreepObj.hits == null) {
+                if (!TState.SpawnQueue.find(e => e.ID != CreepWrapper.ID)) {
+                    TState.Groups.RequeueDeadCreep(CreepWrapper);
+                }
+            }
             if (Group.GroupIsReady) {   
                 switch (Group.Type) {
                     case "attack_group":
@@ -293,6 +298,11 @@ let TState = {
             }
         },
         RunRanged:function(CreepWrapper, Group) {
+            if (!CreepWrapper.CreepObj || CreepWrapper.CreepObj.hits == undefined || CreepWrapper.CreepObj.hits == null) {
+                if (!TState.SpawnQueue.find(e => e.ID != CreepWrapper.ID)) {
+                    TState.Groups.RequeueDeadCreep(CreepWrapper);
+                }
+            }
             if (Group.GroupIsReady) {             
                 switch (Group.Type) {
                     case "attack_group":
@@ -322,6 +332,11 @@ let TState = {
             }
         },
         RunHealer:function(CreepWrapper, Group) {
+            if (!CreepWrapper.CreepObj || CreepWrapper.CreepObj.hits == undefined || CreepWrapper.CreepObj.hits == null) {
+                if (!TState.SpawnQueue.find(e => e.ID != CreepWrapper.ID)) {
+                    TState.Groups.RequeueDeadCreep(CreepWrapper);
+                }
+            }
             if (Group.GroupIsReady) {             
                 switch (Group.Type) {
                     case "attack_group":
@@ -424,6 +439,12 @@ let TState = {
             }
         },
         RunTransporter:function(CreepWrapper, Group) {
+            if (!CreepWrapper.CreepObj || CreepWrapper.CreepObj.hits == undefined || CreepWrapper.CreepObj.hits == null) {
+                if (!TState.SpawnQueue.find(e => e.ID != CreepWrapper.ID)) {
+                    TState.Groups.RequeueDeadCreep(CreepWrapper);
+                }
+            }
+
             if (!CreepWrapper.CreepObj.store){
                 return;
             }
@@ -1545,17 +1566,11 @@ let TState = {
                 }
             }
         },
-        RequeueDeadCreeps:function () {
-            for (let key in TState.CreepGroups) {
-                for(let i = 0; i < TState.CreepGroups[key].length; i++) {
-                    for(let j = 0; j < TState.CreepGroups[key][i].CreepsWrapper.length; j++) {
-                        //console.log(TState.CreepGroups[key][i].CreepsWrapper[j].CreepObj);
-                        if (TState.CreepGroups[key][i].CreepsWrapper[j].CreepObj != null && !TState.CreepGroups[key][i].CreepsWrapper[j].CreepObj.hits && !TState.SpawnQueue.find(ele => ele.ID === TState.CreepGroups[key][i].CreepsWrapper[j].ID)) {
-                            TState.SpawnQueue = TState.SpawnQueue.concat(TState.CreepGroups[key][i].CreepsWrapper[j]);
-                        }
-                    }
-                }
+        RequeueDeadCreep:function (CreepsWrapper) {         
+            if (CreepsWrapper.CreepObj != null && !CreepsWrapper.CreepObj.hits && !TState.SpawnQueue.find(ele => ele.ID === CreepsWrapper.ID)) {
+                TState.SpawnQueue = TState.SpawnQueue.concat(CreepsWrapper);
             }
+           
         },
         ScanGroupLeader:function(Group) {
             if (!Group.CurrentGroupLeader) {
@@ -2222,11 +2237,11 @@ export function loop() {
     if (TState.SpawnDelay) {
         if (getTicks() % 5 == 0) {
             TState.SpawnDelay = false;
-            TState.Groups.RequeueDeadCreeps();
+            //TState.Groups.RequeueDeadCreeps();
             TState.Structures.Spawn.PollSpawnQueue();
         }
     } else {
-        TState.Groups.RequeueDeadCreeps();
+        //TState.Groups.RequeueDeadCreeps();
         TState.Structures.Spawn.PollSpawnQueue();
     }    
     if (TState.NeedContainerScan) {
