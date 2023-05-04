@@ -424,11 +424,9 @@ let TState = {
             }
         },
         RunTransporter:function(CreepWrapper, Group) {
-            //TODO: START HERE
             if (!CreepWrapper.CreepObj.store){
                 return;
             }
-
             if (CreepWrapper.CreepObj.store[RESOURCE_ENERGY] <= 0) {
                 CreepWrapper.CurrentStatus = "container-search";
             } else if (CreepWrapper.CreepObj.store[RESOURCE_ENERGY] == CreepWrapper.CreepObj.store.getCapacity(RESOURCE_ENERGY)) {
@@ -436,7 +434,6 @@ let TState = {
             } else if (CreepWrapper.CreepObj.store[RESOURCE_ENERGY] > 0) {
                 CreepWrapper.CurrentStatus = "container-search";
             }
-
             if (CreepWrapper.CurrentStatus == "container-search") {
                 if (CreepWrapper.CurrentTarget && !CreepWrapper.CurrentTarget.store) {
                     CreepWrapper.CurrentTarget = null;
@@ -1554,7 +1551,6 @@ let TState = {
                     for(let j = 0; j < TState.CreepGroups[key][i].CreepsWrapper.length; j++) {
                         //console.log(TState.CreepGroups[key][i].CreepsWrapper[j].CreepObj);
                         if (TState.CreepGroups[key][i].CreepsWrapper[j].CreepObj != null && !TState.CreepGroups[key][i].CreepsWrapper[j].CreepObj.hits && !TState.SpawnQueue.find(ele => ele.ID === TState.CreepGroups[key][i].CreepsWrapper[j].ID)) {
-                            
                             TState.SpawnQueue = TState.SpawnQueue.concat(TState.CreepGroups[key][i].CreepsWrapper[j]);
                         }
                     }
