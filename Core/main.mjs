@@ -2102,67 +2102,66 @@ let TState = {
                 }
             },
             PollSpawnQueue:function() {
-                let body = [];
-                              
-                if (TState.Structures.Spawn.CanSpawnCreep()) {
-                    for(let i = 0; i < TState.CreepBodyTierCriteria[TState.TechLevel][TState.SpawnQueue[0].CreepType].tough; i++) {
-                        body.push(TOUGH);
-                    }
-                    for(let i = 0; i < TState.CreepBodyTierCriteria[TState.TechLevel][TState.SpawnQueue[0].CreepType].move; i++) {
-                        body.push(MOVE);
-                    }
-                    for(let i = 0; i < TState.CreepBodyTierCriteria[TState.TechLevel][TState.SpawnQueue[0].CreepType].work; i++) {
-                        body.push(WORK);
-                    }
-                    for(let i = 0; i < TState.CreepBodyTierCriteria[TState.TechLevel][TState.SpawnQueue[0].CreepType].carry; i++) {
-                        body.push(CARRY);
-                    }
-                    for(let i = 0; i < TState.CreepBodyTierCriteria[TState.TechLevel][TState.SpawnQueue[0].CreepType].attack; i++) {
-                        body.push(ATTACK);
-                    }
-                    for(let i = 0; i < TState.CreepBodyTierCriteria[TState.TechLevel][TState.SpawnQueue[0].CreepType].ranged; i++) {
-                        body.push(RANGED_ATTACK);
-                    }
-                    for(let i = 0; i < TState.CreepBodyTierCriteria[TState.TechLevel][TState.SpawnQueue[0].CreepType].heal; i++) {
-                        body.push(HEAL);
-                    }
+                if (TState.SpawnQueue.length >0) {
+                    let body = [];                                
+                    if (TState.Structures.Spawn.CanSpawnCreep()) {
+                        for(let i = 0; i < TState.CreepBodyTierCriteria[TState.TechLevel][TState.SpawnQueue[0].CreepType].tough; i++) {
+                            body.push(TOUGH);
+                        }
+                        for(let i = 0; i < TState.CreepBodyTierCriteria[TState.TechLevel][TState.SpawnQueue[0].CreepType].move; i++) {
+                            body.push(MOVE);
+                        }
+                        for(let i = 0; i < TState.CreepBodyTierCriteria[TState.TechLevel][TState.SpawnQueue[0].CreepType].work; i++) {
+                            body.push(WORK);
+                        }
+                        for(let i = 0; i < TState.CreepBodyTierCriteria[TState.TechLevel][TState.SpawnQueue[0].CreepType].carry; i++) {
+                            body.push(CARRY);
+                        }
+                        for(let i = 0; i < TState.CreepBodyTierCriteria[TState.TechLevel][TState.SpawnQueue[0].CreepType].attack; i++) {
+                            body.push(ATTACK);
+                        }
+                        for(let i = 0; i < TState.CreepBodyTierCriteria[TState.TechLevel][TState.SpawnQueue[0].CreepType].ranged; i++) {
+                            body.push(RANGED_ATTACK);
+                        }
+                        for(let i = 0; i < TState.CreepBodyTierCriteria[TState.TechLevel][TState.SpawnQueue[0].CreepType].heal; i++) {
+                            body.push(HEAL);
+                        }
 
-                    //CreepGroupKeys: ["harvester_group", "defense_group", "attack_group", "build_group","capture_group"],
-
-                    for (let i = 0; i < TState.CreepGroups[TState.SpawnQueue[0].GroupType].length; i++) {
-                        if (TState.CreepGroups[TState.SpawnQueue[0].GroupType][i].ID == TState.SpawnQueue[0].GroupId) {
-                            for (let j = 0; j <TState.CreepGroups[TState.SpawnQueue[0].GroupType][i].CreepsWrapper.length; j++) {                                
-                                if (TState.CreepGroups[TState.SpawnQueue[0].GroupType][i].CreepsWrapper[j].ID == TState.SpawnQueue[0].ID && TState.CreepGroups[TState.SpawnQueue[0].GroupType][i].CreepsWrapper[j].CreepType == TState.SpawnQueue[0].CreepType) {                                    
-                                    for (let k = 0; k < TState.Spawns.length; k++) {
-                                            let creep_spawn = TState.Spawns[k].spawnCreep(body);
-                                            if (creep_spawn.error == -4) {
-                                                //console.log("SpawnDelayActive: "+creep_spawn.error);
-                                                TState.SpawnDelay = true;
+                        //CreepGroupKeys: ["harvester_group", "defense_group", "attack_group", "build_group","capture_group"],
+                        for (let i = 0; i < TState.CreepGroups[TState.SpawnQueue[0].GroupType].length; i++) {
+                            if (TState.CreepGroups[TState.SpawnQueue[0].GroupType][i].ID == TState.SpawnQueue[0].GroupId) {
+                                for (let j = 0; j <TState.CreepGroups[TState.SpawnQueue[0].GroupType][i].CreepsWrapper.length; j++) {                                
+                                    if (TState.CreepGroups[TState.SpawnQueue[0].GroupType][i].CreepsWrapper[j].ID == TState.SpawnQueue[0].ID && TState.CreepGroups[TState.SpawnQueue[0].GroupType][i].CreepsWrapper[j].CreepType == TState.SpawnQueue[0].CreepType) {                                    
+                                        for (let k = 0; k < TState.Spawns.length; k++) {
+                                                let creep_spawn = TState.Spawns[k].spawnCreep(body);
+                                                if (creep_spawn.error == -4) {
+                                                    //console.log("SpawnDelayActive: "+creep_spawn.error);
+                                                    TState.SpawnDelay = true;
+                                                    return;
+                                                } 
+                                                if (creep_spawn.error) {
+                                                    //console.log(creep_spawn.error);
+                                                    TState.SpawnDelay = true;
+                                                    return;
+                                                }
+                                                TState.AvailableEnergy -= TState.CreepBodyTierCriteria[TState.TechLevel][TState.SpawnQueue[0].CreepType].total;
+                                                TState.CreepGroups[TState.SpawnQueue[0].GroupType][i].CreepsWrapper[j].CreepObj = creep_spawn.object;
+                                                TState.SpawnQueue.splice(0,1);
                                                 return;
-                                            } 
-                                            if (creep_spawn.error) {
-                                                //console.log(creep_spawn.error);
-                                                TState.SpawnDelay = true;
-                                                return;
-                                            }
-                                            TState.AvailableEnergy -= TState.CreepBodyTierCriteria[TState.TechLevel][TState.SpawnQueue[0].CreepType].total;
-                                            TState.CreepGroups[TState.SpawnQueue[0].GroupType][i].CreepsWrapper[j].CreepObj = creep_spawn.object;
-                                            TState.SpawnQueue.splice(0,1);
-                                            return;
+                                            
+                                        }
                                         
                                     }
-                                    
                                 }
                             }
                         }
-                    }
 
-                } else {                    
-                    //console.log("Not enough energy");
-                    TState.SpawnDelay = true;
-                    
-                }
-                
+                    } else {                    
+                        //console.log("Not enough energy");
+                        TState.SpawnDelay = true;
+                        
+                    }
+                }                
             },
             CanSpawnCreep:function () {
                 TState.Structures.ScanEnergySupply();
@@ -2220,6 +2219,7 @@ let TState = {
             ScanContainers:function() {
                 let room_containers = utils.getObjectsByPrototype(StructureContainer);
                 TState.Containers = room_containers.filter(c => c.store.getUsedCapacity(RESOURCE_ENERGY) > 0);
+                TState.NeedContainerScan = false;
             }
         }
     },
@@ -2244,7 +2244,6 @@ export function loop() {
     }    
     if (TState.NeedContainerScan) {
         TState.Structures.Containers.ScanContainers();
-        TState.NeedContainerScan = false;
     }
     if (getTicks() % 30 == 0) {
         TState.RunTime.StateUpdate();
