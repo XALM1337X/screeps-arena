@@ -411,8 +411,8 @@ let TState = {
 
                         let ret_code = CreepWrapper.CreepObj.heal(CreepWrapper.CurrentTarget);
                         if (ret_code == ERR_NOT_IN_RANGE) {
-                            let ret_code = CreepWrapper.CreepObj.moveTo(CreepWrapper.CurrentTarget); 
-                            if (ret_code != 0) {
+                            let ret_code2 = CreepWrapper.CreepObj.moveTo(CreepWrapper.CurrentTarget); 
+                            if (ret_code2 != 0) {
                                 console.log("ERROR_RUN_HEAL_MOVE(0)");
                             }
                         } else if (ret_code == ERR_INVALID_TARGET) {
@@ -433,7 +433,7 @@ let TState = {
                     case "attack_group":
                     break;
                     case "defense_group":
-                            let ret_code = CreepWrapper.CreepObj.moveTo(TState.Spawns[0]); 
+                            let ret_code = CreepWrapper.CreepObj.moveTo(Group.Zone.CenterPos); 
                             if (ret_code != 0) {
                                 console.log("ERROR_RUN_HEAL_MOVE(1)");
                             }
@@ -1862,13 +1862,13 @@ let TState = {
                             };
                             TState.CreepBodyTierCriteria[TState.TechLevelKeys[i]]["healer"] = {
                                 work: 0,    //0
-                                move: 6,    //300
+                                move: 8,    //400
                                 carry: 0,   //0
                                 attack: 0,  //0
                                 ranged: 0,  //0
                                 heal: 1,    //250
-                                tough: 10,  //100
-                                total: 650,
+                                tough: 5,  //50
+                                total: 700,
                             };
                             
                         break;
