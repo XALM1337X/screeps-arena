@@ -20,7 +20,7 @@ let TState = {
     TechLevelKeys: ["TIER0", "TIER1", "TIER2", "TIER3", "TIER4"],
     GroupKeys: ["harvester_group", "build_group", "defense_group", "attack_group", "capture_group"],
     ZoneOffsets: {
-        attack_group: 7,
+        attack_group: 3,
         defense_group: 4,
         harvester_group: 3,
         build_group: 3,
@@ -191,7 +191,13 @@ let TState = {
                             if (Group.AgroZoneEnemies.length > 0) {
                                 CreepWrapper.CurrentTarget = findClosestByPath(CreepWrapper.CreepObj, Group.AgroZoneEnemies);
                             } else {
-                                CreepWrapper.CurrentTarget = TState.EnemySpawns[0];
+                                if (CreepWrapper.CreepObj.hits == CreepWrapper.CreepObj.hitsMax) {
+                                    console.log("ATTACK-SPAWN");
+                                    CreepWrapper.CurrentTarget = TState.EnemySpawns[0];
+                                } else {
+                                    CreepWrapper.CurrentTarget = null;
+                                }
+                                
                             }                            
                         }
                         let ret_code = CreepWrapper.CreepObj.attack(CreepWrapper.CurrentTarget);
@@ -287,7 +293,6 @@ let TState = {
             } else {
                 switch (Group.Type) {
                     case "attack_group":
-                        console.log("ATTACK_TARGET: "+CreepWrapper.CurrentTarget);
                         if (!CreepWrapper.CurrentTarget || getTicks() % 5 == 0) {
                             if (Group.AgroZoneEnemies.length > 0) {
                                 CreepWrapper.CurrentTarget = findClosestByPath(CreepWrapper.CreepObj, Group.AgroZoneEnemies);
@@ -302,13 +307,13 @@ let TState = {
                                 console.log("ERROR_RUN_ATTACK_MOVE(1)");
                             }
                         } else if (ret_code == ERR_INVALID_TARGET) {
+                            console.log("ATTACKER_DEBUG: INVALID TAGET");
                             CreepWrapper.CurrentTarget = null;
                         } else { 
                             console.log("ATTACKER: "+ret_code);
                         }
                     break;
                     case "defense_group":
-                        console.log("DEFEND_TARGET: "+CreepWrapper.CurrentTarget);
                         let isTargetEnemy = false;
                         if (!CreepWrapper.CurrentTarget || getTicks() % 5 == 0) {
                             if (Group.AgroZoneEnemies.length > 0) {
@@ -327,6 +332,8 @@ let TState = {
                                 }
                             } else if (ret_code2 == ERR_INVALID_TARGET) {
                                 CreepWrapper.CurrentTarget = null;
+                            } else if (ret_code2 == OK) {
+                                //Dont capture.
                             } else { 
                                 console.log("DEFENDER: "+ret_code2);
                             }
@@ -338,7 +345,6 @@ let TState = {
                         }
 
                     break;
-
                     case "harvester_group":
                     break;
                     case "build_group":
@@ -392,6 +398,33 @@ let TState = {
             if (Group.GroupIsInZone) {             
                 switch (Group.Type) {
                     case "attack_group":
+                        if (!CreepWrapper.CurrentTarget || getTicks() % 5 == 0) {
+                            let group = Group.CreepsWrapper.filter(e => e.ID != CreepWrapper.ID);
+                            let in_need = group.filter(e => e.CreepObj.hits < e.CreepObj.hitsMax);
+                            console.log(in_need);
+                            if (in_need.length > 0) {
+                                console.log(in_need[0].CreepObj); 
+                                CreepWrapper.CurrentTarget = in_need[0].CreepObj;
+                            } else {
+                                CreepWrapper.CurrentTarget = Group.Zone.CenterPos;
+                            }
+                        }
+
+                        let ret_code1 = CreepWrapper.CreepObj.heal(CreepWrapper.CurrentTarget);
+                        if (ret_code1 == ERR_NOT_IN_RANGE) {
+                            let ret_code1 = CreepWrapper.CreepObj.moveTo(CreepWrapper.CurrentTarget); 
+                            if (ret_code1 != 0) {
+                                console.log("ERROR_RUN_HEAL_MOVE(0)");
+                            }
+                        } else if (ret_code1 == ERR_INVALID_TARGET) {
+                            CreepWrapper.CreepObj.moveTo(Group.Zone.CenterPos); 
+                            CreepWrapper.CurrentTarget = null;
+                            
+                        } else if (ret_code1 == OK) {
+                            //Do nothing.
+                        } else {
+                            console.log("Healer:defense_group: "+ret_code1);
+                        }
                     break;
                     case "defense_group":
                         if (!CreepWrapper.CurrentTarget || getTicks() % 5 == 0) {
@@ -409,16 +442,18 @@ let TState = {
                             }                            
                         }
 
-                        let ret_code = CreepWrapper.CreepObj.heal(CreepWrapper.CurrentTarget);
-                        if (ret_code == ERR_NOT_IN_RANGE) {
+                        let ret_code2 = CreepWrapper.CreepObj.heal(CreepWrapper.CurrentTarget);
+                        if (ret_code2 == ERR_NOT_IN_RANGE) {
                             let ret_code2 = CreepWrapper.CreepObj.moveTo(CreepWrapper.CurrentTarget); 
                             if (ret_code2 != 0) {
-                                console.log("ERROR_RUN_HEAL_MOVE(0)");
+                                console.log("ERROR_RUN_HEAL_MOVE(1)");
                             }
-                        } else if (ret_code == ERR_INVALID_TARGET) {
+                        } else if (ret_code2 == ERR_INVALID_TARGET) {
                             CreepWrapper.CurrentTarget = null;
+                        } else if (ret_code2 == OK) {
+                            //Do nothing.
                         } else {
-                            console.log("Healer-Code: "+ret_code);
+                            console.log("Healer:defense_group: "+ret_code2);
                         }
                     break;
                     case "harvester_group":
@@ -431,11 +466,42 @@ let TState = {
             } else {
                 switch (Group.Type) {
                     case "attack_group":
+                        if (!CreepWrapper.CurrentTarget || getTicks() % 5 == 0) {
+                            let group = Group.CreepsWrapper.filter(e => e.ID != CreepWrapper.ID);
+                           
+                               
+                                let in_need = group.filter(e => e.CreepObj != null && e.CreepObj.hits < e.CreepObj.hitsMax);
+                                //console.log(in_need);
+                                if (in_need.length > 0) {
+                                    console.log(in_need[0].CreepObj); 
+                                    CreepWrapper.CurrentTarget = in_need[0].CreepObj;
+                                } else {
+                                    CreepWrapper.CurrentTarget = Group.Zone.CenterPos;
+                                }
+                             
+
+                        }
+
+                        let ret_code1 = CreepWrapper.CreepObj.heal(CreepWrapper.CurrentTarget);
+                        if (ret_code1 == ERR_NOT_IN_RANGE) {
+                            let ret_code1 = CreepWrapper.CreepObj.moveTo(CreepWrapper.CurrentTarget); 
+                            if (ret_code1 != 0) {
+                                console.log("ERROR_RUN_HEAL_MOVE(0)");
+                            }
+                        } else if (ret_code1 == ERR_INVALID_TARGET) {
+                            CreepWrapper.CreepObj.moveTo(Group.Zone.CenterPos); 
+                            CreepWrapper.CurrentTarget = null;
+                            
+                        } else if (ret_code1 == OK) {
+                            //Do nothing.
+                        } else {
+                            console.log("Healer:defense_group: "+ret_code1);
+                        }
                     break;
                     case "defense_group":
-                            let ret_code = CreepWrapper.CreepObj.moveTo(Group.Zone.CenterPos); 
-                            if (ret_code != 0) {
-                                console.log("ERROR_RUN_HEAL_MOVE(1)");
+                            let ret_code2 = CreepWrapper.CreepObj.moveTo(Group.Zone.CenterPos); 
+                            if (ret_code2 != 0) {
+                                console.log("ERROR_RUN_HEAL_MOVE(2)");
                             }
                     break;
                     case "harvester_group":
@@ -741,18 +807,18 @@ let TState = {
                             builder_creeps: ("SAS" == TState.GameType) ? 0 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 1,
                         };
                         TState.GroupTierCriteria[TState.TechLevelKeys[i]]["defense_group"] = {
-                            total_groups: ("SAS" == TState.GameType) ? 2 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 1,
+                            total_groups: ("SAS" == TState.GameType) ? 1 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 1,
                             total_creeps: ("SAS" == TState.GameType) ? 3 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 3,
                             melee_creeps: ("SAS" == TState.GameType) ? 1 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 1,
                             ranged_creeps: ("SAS" == TState.GameType) ? 0 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 1,
                             healer_creeps: ("SAS" == TState.GameType) ? 2 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 1,
                         };
                         TState.GroupTierCriteria[TState.TechLevelKeys[i]]["attack_group"] = {
-                            total_groups: ("SAS" == TState.GameType) ? 0 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 0,
-                            total_creeps: ("SAS" == TState.GameType) ? 2 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 0,
+                            total_groups: ("SAS" == TState.GameType) ? 2 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 0,
+                            total_creeps: ("SAS" == TState.GameType) ? 3 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 0,
                             melee_creeps: ("SAS" == TState.GameType) ? 1 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 0,
                             ranged_creeps: ("SAS" == TState.GameType) ? 0 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 0,
-                            healer_creeps: ("SAS" == TState.GameType) ? 1 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 0,
+                            healer_creeps: ("SAS" == TState.GameType) ? 3 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 0,
                         };
                         TState.GroupTierCriteria[TState.TechLevelKeys[i]]["capture_group"] = {
                             total_groups: ("SAS" == TState.GameType) ? 0 : ("CAC" == TState.GameType) ? 0 : ("CTF" == TState.GameType) ? 0 : 0,
@@ -1847,8 +1913,8 @@ let TState = {
                                 attack: 7,  //560
                                 ranged: 0,  //0
                                 heal: 0,    //0
-                                tough: 5,   //40
-                                total: 900,
+                                tough: 10,  //100
+                                total: 960,
                             };
                             TState.CreepBodyTierCriteria[TState.TechLevelKeys[i]]["ranged"] = {
                                 work: 0,    //0
